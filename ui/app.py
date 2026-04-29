@@ -54,7 +54,7 @@ section[data-testid="stSidebar"] .stButton[data-active="true"] button {
 }
 
 /* Logo Button styling (First button in sidebar) */
-section[data-testid="stSidebar"] div.stButton:first-of-type button {
+section[data-testid="stSidebar"] .stButton button[kind="tertiary"] {
     background: transparent !important;
     border: none !important;
     padding: 0.5rem 0 1rem 0 !important;
@@ -63,11 +63,11 @@ section[data-testid="stSidebar"] div.stButton:first-of-type button {
     width: 100% !important;
     box-shadow: none !important;
 }
-section[data-testid="stSidebar"] div.stButton:first-of-type button:hover {
+section[data-testid="stSidebar"] .stButton button[kind="tertiary"]:hover {
     background: transparent !important;
     border: none !important;
 }
-section[data-testid="stSidebar"] div.stButton:first-of-type button p {
+section[data-testid="stSidebar"] .stButton button[kind="tertiary"] p {
     font-size: 1.8rem;
     font-weight: 900;
     letter-spacing: -1px;
@@ -76,7 +76,7 @@ section[data-testid="stSidebar"] div.stButton:first-of-type button p {
     -webkit-text-fill-color: transparent;
     margin: 0;
 }
-section[data-testid="stSidebar"] div.stButton:first-of-type button::after {
+section[data-testid="stSidebar"] .stButton button[kind="tertiary"]::after {
     content: "AI powered Network test intelligence platform.";
     display: block;
     font-size: 0.75rem;

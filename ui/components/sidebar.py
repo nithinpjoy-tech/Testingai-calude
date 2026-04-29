@@ -13,7 +13,7 @@ PAGES = [
 def render_sidebar() -> None:
     with st.sidebar:
         # Logo / title block (styled as logo via CSS in app.py)
-        if st.button("NTIP", key="nav_logo_btn", use_container_width=True):
+        if st.button("NTIP", key="nav_logo_btn", type="tertiary", use_container_width=True):
             st.session_state.active_page = "dashboard"
             st.rerun()
 
