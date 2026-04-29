@@ -1,6 +1,7 @@
 """
 p03_remediation.py — Fix script generation, approval gate, step-by-step execution.
-Features: #8 script view, #9 approval gate, #10 step executor, #11 rollback indicator.
+Features: #8 script view, #9 approval gate, #10 step executor, #11 rollback indicator,
+          #12 mid-triage Claude chat panel (right column).
 """
 from __future__ import annotations
 import time
@@ -35,6 +36,23 @@ def render() -> None:
             st.rerun()
         return
 
+    # Two-column layout: execution steps on the left, Claude chat on the right
+    left_col, right_col = st.columns([3, 2], gap="large")
+
+    with left_col:
+        _render_main(run, triage)
+
+    with right_col:
+        st.markdown("### Ask Claude")
+        from ui.components.chat_sidebar import render_chat_panel
+        render_chat_panel()
+
+
+# ---------------------------------------------------------------------------
+# Main remediation content (left column)
+# ---------------------------------------------------------------------------
+
+def _render_main(run, triage) -> None:
     st.markdown("## 🔧 Remediation")
 
     # ── Triage summary strip ──────────────────────────────────────────────────
@@ -144,12 +162,12 @@ def render() -> None:
     st.markdown("---")
 
     # ── Approval gate ─────────────────────────────────────────────────────────
-    approved   = st.session_state.get("approved", False)
-    exec_done  = st.session_state.get("exec_done", False)
+    approved  = st.session_state.get("approved", False)
+    exec_done = st.session_state.get("exec_done", False)
 
     if exec_done:
         _render_execution_summary(exec_log)
-        _render_post_actions(run, triage, script, exec_log)
+        _render_post_actions(run, triage, script)
         return
 
     if not approved:
@@ -196,9 +214,9 @@ def render() -> None:
 def _run_execution(script) -> None:
     """Stream execution step by step, updating the UI live."""
     log: list[dict] = []
-    progress = st.progress(0)
+    progress  = st.progress(0)
     status_box = st.empty()
-    total = len(script.steps)
+    total      = len(script.steps)
 
     reset_simulated_ntd()
 
@@ -206,7 +224,7 @@ def _run_execution(script) -> None:
         log.append(result.to_dict())
         st.session_state.exec_log = log
 
-        pct = int(i / total * 100)
+        pct  = int(i / total * 100)
         progress.progress(pct)
         icon = "✅" if result.status == StepStatus.PASSED else "❌"
         status_box.markdown(
@@ -229,11 +247,10 @@ def _render_execution_summary(exec_log: list[dict]) -> None:
     total  = len(exec_log)
 
     if failed == 0:
-        st.success(f"✅ All {total} steps completed successfully.")
+        st.success(f"✅ All {total} steps passed successfully.")
     else:
-        st.error(f"❌ {failed} of {total} steps failed. Execution halted.")
+        st.error(f"❌ {failed} of {total} steps failed ({passed} passed). Execution halted.")
 
-    # Per-step summary table
     for r in exec_log:
         icon, col, _ = _STATUS_STYLE.get(r["status"], ("⚪", "#333", "#FFF"))
         with st.expander(f"{icon} Step {r['step_number']}: {r['description']} — {r['status'].upper()}"):
@@ -242,7 +259,7 @@ def _render_execution_summary(exec_log: list[dict]) -> None:
                 st.error(r["stderr"])
 
 
-def _render_post_actions(run, triage, script, exec_log) -> None:
+def _render_post_actions(run, triage, script) -> None:
     st.markdown("---")
     col1, col2, col3 = st.columns(3)
 
@@ -256,7 +273,7 @@ def _render_post_actions(run, triage, script, exec_log) -> None:
 
     if col2.button("🔄 New Analysis", use_container_width=True):
         for k in ["fix_script", "exec_log", "exec_done", "approved"]:
-            st.session_state[k] = [] if k == "exec_log" else False if k in ("exec_done","approved") else None
+            st.session_state[k] = [] if k == "exec_log" else False if k in ("exec_done", "approved") else None
         st.rerun()
 
     if col3.button("⚖️ Compare Runs →", use_container_width=True):

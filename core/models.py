@@ -171,3 +171,37 @@ class RunRecord(BaseModel):
     status:      RunStatus = RunStatus.INGESTED
     root_cause:  str | None = None
     severity:    Severity | None = None
+
+
+# ── Chat models ────────────────────────────────────────────────────────────────
+
+class ChatRole(str, Enum):
+    SYSTEM    = "system"
+    USER      = "user"
+    ASSISTANT = "assistant"
+
+
+class ChatMessage(BaseModel):
+    """A single turn in the mid-triage chat sidebar."""
+    role:      ChatRole
+    content:   str
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ChatSession(BaseModel):
+    """All state for one operator conversation tied to a specific run."""
+    run_id:   str
+    messages: list[ChatMessage] = []
+
+    def add(self, role: ChatRole, content: str) -> "ChatMessage":
+        msg = ChatMessage(role=role, content=content)
+        self.messages.append(msg)
+        return msg
+
+    def to_api_messages(self) -> list[dict[str, str]]:
+        """Return message list in the shape Anthropic's API expects."""
+        return [
+            {"role": m.role.value, "content": m.content}
+            for m in self.messages
+            if m.role != ChatRole.SYSTEM
+        ]
