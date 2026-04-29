@@ -114,8 +114,8 @@ def render() -> None:
                 except Exception as exc:
                     st.error(f"Triage failed: {exc}")
         col_info.info(
-            "Claude will analyse the test failure, identify the root cause, "
-            "and provide ranked recommendations. Takes ~10–20 seconds."
+            "Analyse the test failure, identify the root cause, "
+            "and provide ranked recommendations."
         )
         return
 
