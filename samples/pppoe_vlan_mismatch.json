@@ -1,0 +1,72 @@
+{
+  "test_id": "TC_PPPOE_FTTP_001",
+  "test_name": "PPPoE session establishment on FTTP NTD (nbn 100/40)",
+  "description": "Verify PPPoE session reaches LCP-up state and DHCP lease is bound on a freshly-provisioned FTTP NTD attached to OLT port g-1/0/3.",
+  "run_timestamp": "2026-04-28T03:14:21Z",
+  "build_version": "ntd-fw-3.7.2-r4",
+  "access_technology": "FTTP",
+  "speed_tier": "100/40",
+  "duts": [
+    {
+      "role": "NTD",
+      "vendor": "NetComm",
+      "model": "NF18ACV",
+      "firmware": "3.7.2-r4",
+      "serial": "NF18ACV-19A4-002871",
+      "mgmt_address": "192.168.100.1"
+    },
+    {
+      "role": "OLT",
+      "vendor": "Nokia",
+      "model": "7360 ISAM FX-8",
+      "firmware": "FANT-F 09.42.04",
+      "mgmt_address": "10.10.0.21"
+    }
+  ],
+  "topology": "NTD wan0 -- OLT g-1/0/3 -- BNG (POI-Sydney) — service VLAN expected = 2 for nbn 100/40",
+  "pre_conditions": [
+    "OLT port g-1/0/3 administratively up and provisioned for service profile 'NBN-RES-100-40'",
+    "RADIUS realm @nbn.aussiebb.net reachable from BNG",
+    "NTD freshly factory-reset, then provisioned via TR-069 ACS profile id 4711"
+  ],
+  "test_parameters": {
+    "expected_service_vlan": 2,
+    "pppoe_username": "user-002871@aussiebb.net",
+    "auth_type": "PAP",
+    "test_duration_seconds": 120
+  },
+  "pass_criteria": [
+    {"name": "pppoe_state", "expected": "lcp-up", "passed": false},
+    {"name": "dhcp_state", "expected": "bound", "passed": false},
+    {"name": "session_setup_time_ms", "expected": "<5000", "passed": false}
+  ],
+  "measurements": [
+    {"name": "pppoe_state", "actual": "padi-sent", "passed": false},
+    {"name": "dhcp_state", "actual": "no-lease", "passed": false},
+    {"name": "session_setup_time_ms", "actual": "timeout", "passed": false}
+  ],
+  "config_snapshot": {
+    "ntd": {
+      "interface_wan0_vlan": 10,
+      "interface_wan0_admin": "up",
+      "pppoe_client": "enabled",
+      "auth_type": "PAP"
+    },
+    "olt_port": {
+      "service_profile": "NBN-RES-100-40",
+      "service_vlan": 2,
+      "admin": "up"
+    }
+  },
+  "log_events": [
+    {"timestamp": "2026-04-28T03:14:21Z", "severity": "INFO",  "source": "ntd.pppoe",  "message": "Starting PPPoE discovery on wan0 (vlan-id=10)"},
+    {"timestamp": "2026-04-28T03:14:21Z", "severity": "INFO",  "source": "ntd.pppoe",  "message": "PADI sent, awaiting PADO"},
+    {"timestamp": "2026-04-28T03:14:51Z", "severity": "WARN",  "source": "ntd.pppoe",  "message": "No PADO received within 30s, retrying (1/3)"},
+    {"timestamp": "2026-04-28T03:15:21Z", "severity": "WARN",  "source": "ntd.pppoe",  "message": "No PADO received within 30s, retrying (2/3)"},
+    {"timestamp": "2026-04-28T03:15:51Z", "severity": "ERROR", "source": "ntd.pppoe",  "message": "PPPoE discovery failed: no PADO received after 3 attempts"},
+    {"timestamp": "2026-04-28T03:15:52Z", "severity": "INFO",  "source": "olt.access", "message": "Frame received from ONT 002871 with VLAN 10; expected service-vlan 2 per profile NBN-RES-100-40 — frame DROPPED at S-VLAN translation"},
+    {"timestamp": "2026-04-28T03:15:52Z", "severity": "WARN",  "source": "olt.access", "message": "Counter sv-vlan-mismatch incremented (port g-1/0/3): total=42 in last 90s"}
+  ],
+  "verdict": "FAIL",
+  "failure_summary": "PPPoE session never reached lcp-up state. PADI frames are sent but no PADO is received. OLT logs show frames arriving with VLAN 10 while service profile NBN-RES-100-40 expects VLAN 2."
+}

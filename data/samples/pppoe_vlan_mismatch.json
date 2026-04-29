@@ -1,0 +1,47 @@
+{
+  "test_case_id": "TC_FTTP_PPPOE_001",
+  "test_name": "PPPoE Session Establishment — FTTP NTD VLAN Verification",
+  "run_timestamp": "2026-04-29T02:14:33.000Z",
+  "verdict": "FAIL",
+  "build": "NTD-FW-4.1.2.187",
+  "environment": "NBN Lab — Rack 3, Bay 7",
+  "dut": {
+    "hostname": "NTD-LAB-FPX2127",
+    "model": "Arris NTD FPX-2127",
+    "firmware": "4.1.2.187",
+    "ip": "192.168.1.1",
+    "technology": "FTTP"
+  },
+  "topology_notes": "NTD connected to Calix E7-2 OLT via single-mode fibre. VLAN 2 is the NBN-assigned CVID for 100/20 speed tier. NTD misconfigured with VLAN 10 (previous test artefact).",
+  "metrics": [
+    { "name": "PPPoE Discovery (PADI sent)",    "expected": true,  "measured": true,  "status": "PASS" },
+    { "name": "PPPoE Offer (PADO received)",     "expected": true,  "measured": false, "status": "FAIL" },
+    { "name": "PPPoE Session Established",       "expected": true,  "measured": false, "status": "FAIL" },
+    { "name": "DHCP Lease Obtained",             "expected": true,  "measured": false, "status": "FAIL" },
+    { "name": "Round-trip latency (ms)",         "expected": "≤ 8", "measured": null,  "unit": "ms", "status": "FAIL" },
+    { "name": "Session establishment time (s)",  "expected": "≤ 5", "measured": null,  "unit": "s",  "status": "FAIL" }
+  ],
+  "errors": [
+    {
+      "timestamp": "2026-04-29T02:14:34.112Z",
+      "level": "ERROR",
+      "component": "PPPoE-CLIENT",
+      "message": "PADI timeout after 30s — no PADO received from OLT",
+      "raw": "pppoe[1042]: timeout waiting for PADO on eth0.10 (VLAN 10) after 30000ms"
+    },
+    {
+      "timestamp": "2026-04-29T02:14:34.113Z",
+      "level": "WARN",
+      "component": "VLAN-ENGINE",
+      "message": "Tagged frame egressing on VLAN 10; OLT CVP map shows VLAN 2 for this ONT port",
+      "raw": "vlan[217]: egress cvid=10 ont_port=2/1/3 olt_cvid_map=2 MISMATCH"
+    },
+    {
+      "timestamp": "2026-04-29T02:14:34.115Z",
+      "level": "ERROR",
+      "component": "OLT-CALIX-E7",
+      "message": "Untagged or mismatched CVID frame dropped at OLT ingress",
+      "raw": "calix_e7: port 2/1/3 ingress drop cvid=10 policy=cvid_exact_match"
+    }
+  ]
+}

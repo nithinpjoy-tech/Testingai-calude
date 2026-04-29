@@ -1,0 +1,29 @@
+# NBN Test Tool — application configuration
+# Environment variables override these values (see .env.example).
+
+llm:
+  provider: openai            # openai | azure_openai
+  model: gpt-4-turbo
+  temperature: 0.1            # low: deterministic diagnosis
+  max_tokens: 3000
+  request_timeout_seconds: 60
+  max_retries: 3
+
+executor:
+  backend: simulated          # simulated | ssh
+  dry_run: false              # if true, log commands but don't apply
+  step_timeout_seconds: 30
+  halt_on_step_failure: true
+
+triage:
+  require_confidence_above: 0.0   # block fix generation below this
+  cite_evidence_required: true
+
+ui:
+  title: "NBN Test Failure Triage — AI Assistant"
+  show_raw_llm_response: true     # demo mode: useful to show prompt engineering
+
+audit:
+  enabled: true
+  path: ./audit.log
+  redact_keys: ["api_key", "password", "secret"]

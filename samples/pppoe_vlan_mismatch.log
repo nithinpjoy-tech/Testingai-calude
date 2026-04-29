@@ -1,0 +1,27 @@
+# Raw device log — PPPoE VLAN mismatch on FTTP NTD (TC_PPPOE_FTTP_001)
+# Device: NetComm NF18ACV  FW: 3.7.2-r4  Serial: NF18ACV-19A4-002871
+# Capture start: 2026-04-28T03:14:20Z
+
+2026-04-28T03:14:20.814Z [INFO ] ntd.boot       : System fully operational, interfaces up
+2026-04-28T03:14:20.998Z [INFO ] ntd.wan        : wan0 admin-state=up, mode=PPPoE, vlan=10
+2026-04-28T03:14:21.003Z [INFO ] ntd.pppoe      : Starting PPPoE discovery on wan0 (vlan-id=10)
+2026-04-28T03:14:21.007Z [INFO ] ntd.pppoe      : PADI sent, awaiting PADO (attempt 1/3)
+2026-04-28T03:14:21.012Z [INFO ] olt.access     : [g-1/0/3] ONT 002871 online, service-profile=NBN-RES-100-40
+2026-04-28T03:14:21.015Z [INFO ] olt.access     : [g-1/0/3] Frame RX from ONT 002871: ethertype=0x8863 vlan=10
+2026-04-28T03:14:21.016Z [WARN ] olt.access     : [g-1/0/3] S-VLAN mismatch: got=10, expected=2 (profile NBN-RES-100-40)
+2026-04-28T03:14:21.016Z [INFO ] olt.access     : [g-1/0/3] Frame DROPPED — counter sv-vlan-mismatch=1
+2026-04-28T03:14:51.021Z [WARN ] ntd.pppoe      : No PADO received within 30s, retrying (2/3)
+2026-04-28T03:14:51.024Z [INFO ] ntd.pppoe      : PADI sent, awaiting PADO (attempt 2/3)
+2026-04-28T03:14:51.028Z [WARN ] olt.access     : [g-1/0/3] S-VLAN mismatch: got=10, expected=2 — counter sv-vlan-mismatch=16
+2026-04-28T03:15:21.030Z [WARN ] ntd.pppoe      : No PADO received within 30s, retrying (3/3)
+2026-04-28T03:15:21.033Z [INFO ] ntd.pppoe      : PADI sent, awaiting PADO (attempt 3/3)
+2026-04-28T03:15:21.037Z [WARN ] olt.access     : [g-1/0/3] S-VLAN mismatch: got=10, expected=2 — counter sv-vlan-mismatch=31
+2026-04-28T03:15:51.041Z [ERROR] ntd.pppoe      : PPPoE discovery failed: no PADO received after 3 attempts (90s timeout)
+2026-04-28T03:15:51.044Z [ERROR] ntd.pppoe      : Session state: PADI_SENT → DISCOVERY_TIMEOUT
+2026-04-28T03:15:51.047Z [INFO ] ntd.dhcp       : DHCP client idle — PPPoE prerequisite not met
+2026-04-28T03:15:52.001Z [WARN ] olt.access     : [g-1/0/3] sv-vlan-mismatch counter=42 in last 90s — threshold alert raised
+2026-04-28T03:15:52.003Z [INFO ] olt.mgmt       : SNMP trap sent: sv-vlan-mismatch-threshold g-1/0/3
+
+# End of log capture — test verdict: FAIL
+# Failure summary: NTD configured with VLAN 10; OLT service profile expects VLAN 2.
+#   All PPPoE discovery frames silently dropped at S-VLAN translation layer.

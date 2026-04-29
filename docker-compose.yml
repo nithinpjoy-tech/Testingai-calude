@@ -1,0 +1,72 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NBN Test Triage Tool — Docker Compose
+# Usage:
+#   cp .env.example .env          # add ANTHROPIC_API_KEY
+#   docker compose up             # start (builds automatically)
+#   docker compose up --build     # force rebuild after code changes
+#   docker compose down -v        # stop and remove volumes
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  triage-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: nbn-triage-tool:milestone1
+    container_name: nbn-triage
+    restart: unless-stopped
+
+    ports:
+      - "8501:8501"          # Streamlit UI → http://localhost:8501
+
+    volumes:
+      # Persist SQLite run history across container restarts
+      - triage-db:/app/data
+      # Mount sample files so they survive image rebuilds
+      - ./samples:/app/samples:ro
+
+    env_file:
+      - .env                 # ANTHROPIC_API_KEY lives here
+
+    environment:
+      # Model override — change here without rebuilding
+      CLAUDE_MODEL: "claude-sonnet-4-20250514"
+      APP_ENV: "demo"
+      # Streamlit
+      STREAMLIT_SERVER_PORT: "8501"
+      STREAMLIT_SERVER_HEADLESS: "true"
+      STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+
+    healthcheck:
+      test: >
+        python -c
+        "import urllib.request;
+         urllib.request.urlopen('http://localhost:8501/_stcore/health')"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+    # Resource limits — sensible for a demo/dev deployment
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+        reservations:
+          memory: 256M
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
+volumes:
+  triage-db:
+    driver: local
+    labels:
+      com.nbn.triage.description: "SQLite run history + saved reports"

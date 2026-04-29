@@ -1,0 +1,38 @@
+app:
+  name: "NBN Test Triage Tool"
+  version: "0.1.0-milestone1"
+  env: "demo"
+
+claude:
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 4096
+  temperature: 0.2
+  timeout_seconds: 60
+  retry_attempts: 3
+  retry_backoff_seconds: 2
+
+execution:
+  mode: "simulated"          # simulated | live
+  dry_run: true              # default safe; operator must explicitly set false
+  step_timeout_seconds: 30
+  max_steps: 20
+
+storage:
+  runs_dir: "data/runs"
+  db_path: "data/triage.db"
+
+notifications:
+  slack_webhook_url: ""
+  teams_webhook_url: ""
+  enabled: false
+
+ui:
+  host: "0.0.0.0"
+  port: 8501
+  page_title: "NBN Test Triage"
+  theme: "professional"
+
+logging:
+  level: "INFO"
+  format: "json"
+  audit_log_path: "data/audit.jsonl"

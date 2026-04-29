@@ -1,0 +1,10 @@
+2026-04-29T02:14:33.000Z INFO  TEST-RUNNER  Starting TC_FTTP_PPPOE_001 on NTD-LAB-FPX2127 (FW 4.1.2.187)
+2026-04-29T02:14:33.210Z INFO  PPPoE-CLIENT Sending PADI on interface eth0.10 (VLAN 10)
+2026-04-29T02:14:33.211Z DEBUG VLAN-ENGINE  egress cvid=10 ont_port=2/1/3 olt_cvid_map=2 MISMATCH
+2026-04-29T02:14:33.212Z WARN  VLAN-ENGINE  Tagged frame egressing on VLAN 10; OLT CVP map shows VLAN 2 for this ONT port
+2026-04-29T02:14:33.500Z DEBUG OLT-CALIX-E7 port 2/1/3 ingress drop cvid=10 policy=cvid_exact_match
+2026-04-29T02:14:33.501Z ERROR OLT-CALIX-E7 Untagged or mismatched CVID frame dropped at OLT ingress
+2026-04-29T02:14:34.112Z ERROR PPPoE-CLIENT PADI timeout after 30s — no PADO received from OLT
+2026-04-29T02:14:34.113Z ERROR PPPoE-CLIENT pppoe[1042]: timeout waiting for PADO on eth0.10 (VLAN 10) after 30000ms
+2026-04-29T02:14:34.115Z FATAL TEST-RUNNER  TC_FTTP_PPPOE_001 FAIL — PPPoE session not established
+2026-04-29T02:14:34.116Z INFO  TEST-RUNNER  Expected: PPPoE session up within 5s | Measured: TIMEOUT
