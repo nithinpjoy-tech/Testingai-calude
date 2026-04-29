@@ -1,18 +1,22 @@
 """
-notifications/webhook.py  — Feature #18
-----------------------------------------
-Stub for Slack and Teams webhook notifications.
-Sends severity-aware message when a run completes or fails.
+notifications/webhook.py  — Milestone 3: webhooks activated
+-------------------------------------------------------------
+Sends severity-aware notifications to Slack and/or MS Teams
+when a run completes.
 
-Currently: structured stub (logs payload, does not POST).
-Activate: set SLACK_WEBHOOK_URL or TEAMS_WEBHOOK_URL in .env.
+Activation: set SLACK_WEBHOOK_URL or TEAMS_WEBHOOK_URL in .env.
+Both channels are independent — one, both, or neither can be active.
 
-TODO (Step 8): implement _send_slack() with httpx
-TODO (Step 8): implement _send_teams() with Adaptive Card payload
+Slack:  uses attachment format (compatible with all Slack tiers)
+Teams:  uses Adaptive Card via Incoming Webhook connector
 """
 from __future__ import annotations
+
 import logging
 import os
+from datetime import datetime
+
+import httpx
 
 from core.models import RunReport, Severity
 
@@ -20,50 +24,161 @@ logger = logging.getLogger(__name__)
 
 SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
 TEAMS_WEBHOOK_URL = os.getenv("TEAMS_WEBHOOK_URL", "")
+NOTIFY_TIMEOUT_S  = 8   # seconds
 
 SEVERITY_COLOUR = {
     Severity.CRITICAL: "#C0392B",
     Severity.HIGH:     "#E67E22",
     Severity.MEDIUM:   "#2980B9",
     Severity.LOW:      "#27AE60",
-    Severity.INFO:     "#6B7885",
+}
+
+SEVERITY_EMOJI = {
+    Severity.CRITICAL: "🚨",
+    Severity.HIGH:     "⚠️",
+    Severity.MEDIUM:   "ℹ️",
+    Severity.LOW:      "✅",
 }
 
 
 def notify(report: RunReport) -> list[str]:
-    """Send notification to all configured channels. Returns list of channels notified."""
+    """
+    Send notification to all configured channels.
+    Returns list of channel names successfully notified.
+    Errors are logged and swallowed — notification failure must never crash the pipeline.
+    """
     sent: list[str] = []
+
     if SLACK_WEBHOOK_URL:
-        _send_slack(report)
-        sent.append("slack")
+        try:
+            _send_slack(report)
+            sent.append("slack")
+            logger.info("Slack notification sent for run %s", report.run_id)
+        except Exception as exc:
+            logger.error("Slack notification failed for run %s: %s", report.run_id, exc)
+
     if TEAMS_WEBHOOK_URL:
-        _send_teams(report)
-        sent.append("teams")
+        try:
+            _send_teams(report)
+            sent.append("teams")
+            logger.info("Teams notification sent for run %s", report.run_id)
+        except Exception as exc:
+            logger.error("Teams notification failed for run %s: %s", report.run_id, exc)
+
     if not sent:
-        logger.debug("No webhook URLs configured — skipping notification")
+        logger.debug("No webhook URLs configured — skipping notification for run %s", report.run_id)
+
     return sent
 
 
+# ── Slack ─────────────────────────────────────────────────────────────────────
+
 def _send_slack(report: RunReport) -> None:
-    """POST attachment-style message to Slack. TODO (Step 8)."""
-    colour = SEVERITY_COLOUR.get(report.triage.severity, "#6B7885")
+    """POST an attachment-style message to Slack."""
+    t      = report.triage
+    run    = report.test_run
+    colour = SEVERITY_COLOUR.get(t.severity, "#6B7885")
+    emoji  = SEVERITY_EMOJI.get(t.severity, "ℹ️")
+    ts     = report.generated_at.strftime("%Y-%m-%d %H:%M UTC")
+
+    recs_text = "\n".join(
+        f"  {r.priority}. {r.action}" for r in t.recommendations[:3]
+    ) or "None"
+
     payload = {
         "attachments": [{
-            "color":  colour,
-            "title":  f"[{report.test_run.verdict.value}] {report.test_run.test_case_name}",
-            "text":   report.triage.root_cause_summary,
-            "fields": [
-                {"title": "Severity",    "value": report.triage.severity.value, "short": True},
-                {"title": "Confidence",  "value": f"{report.triage.confidence:.0%}", "short": True},
-                {"title": "Run ID",      "value": report.run_id, "short": False},
+            "color":    colour,
+            "fallback": f"[{t.severity.value}] {run.test_case_name} — {run.verdict.value}",
+            "blocks": [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": f"{emoji} NBN Test Triage — {t.severity.value}",
+                    }
+                },
+                {
+                    "type": "section",
+                    "fields": [
+                        {"type": "mrkdwn", "text": f"*Test Case*\n{run.test_case_name}"},
+                        {"type": "mrkdwn", "text": f"*Verdict*\n{run.verdict.value}"},
+                        {"type": "mrkdwn", "text": f"*Device*\n{run.dut.vendor} {run.dut.model}"},
+                        {"type": "mrkdwn", "text": f"*Confidence*\n{t.confidence:.0%}"},
+                    ]
+                },
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"*Root Cause*\n{t.root_cause_summary}"}
+                },
+                {
+                    "type": "section",
+                    "text": {"type": "mrkdwn", "text": f"*Top Recommendations*\n{recs_text}"}
+                },
+                {
+                    "type": "context",
+                    "elements": [{"type": "mrkdwn",
+                                  "text": f"Run ID: `{report.run_id}` · {ts}"}]
+                }
             ],
         }]
     }
-    logger.info("[STUB] Slack payload ready for run %s — activate SLACK_WEBHOOK_URL to send", report.run_id)
-    # TODO: await httpx.post(SLACK_WEBHOOK_URL, json=payload, timeout=5)
 
+    resp = httpx.post(SLACK_WEBHOOK_URL, json=payload, timeout=NOTIFY_TIMEOUT_S)
+    resp.raise_for_status()
+
+
+# ── Microsoft Teams ───────────────────────────────────────────────────────────
 
 def _send_teams(report: RunReport) -> None:
-    """POST Adaptive Card to MS Teams. TODO (Step 8)."""
-    logger.info("[STUB] Teams notification for run %s — activate TEAMS_WEBHOOK_URL to send", report.run_id)
-    # TODO: build Adaptive Card + httpx.post(TEAMS_WEBHOOK_URL, ...)
+    """POST an Adaptive Card to a Microsoft Teams channel via Incoming Webhook."""
+    t      = report.triage
+    run    = report.test_run
+    colour = SEVERITY_COLOUR.get(t.severity, "#6B7885").lstrip("#")
+    emoji  = SEVERITY_EMOJI.get(t.severity, "ℹ️")
+    ts     = report.generated_at.strftime("%Y-%m-%d %H:%M UTC")
+
+    facts = [
+        {"title": "Test Case",   "value": run.test_case_name},
+        {"title": "Verdict",     "value": run.verdict.value},
+        {"title": "Severity",    "value": t.severity.value},
+        {"title": "Confidence",  "value": f"{t.confidence:.0%}"},
+        {"title": "Device",      "value": f"{run.dut.vendor} {run.dut.model} ({run.dut.firmware})"},
+        {"title": "Technology",  "value": run.dut.access_technology},
+        {"title": "Run ID",      "value": report.run_id},
+        {"title": "Timestamp",   "value": ts},
+    ]
+    if t.recommendations:
+        top = t.recommendations[0]
+        facts.append({"title": "Top Fix", "value": top.action})
+
+    # Adaptive Card (compatible with Teams Incoming Webhook)
+    payload = {
+        "type":        "message",
+        "attachments": [{
+            "contentType": "application/vnd.microsoft.card.adaptive",
+            "content": {
+                "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+                "type":    "AdaptiveCard",
+                "version": "1.4",
+                "body": [
+                    {
+                        "type":   "TextBlock",
+                        "size":   "Medium",
+                        "weight": "Bolder",
+                        "text":   f"{emoji} NBN Triage Alert — {t.severity.value}",
+                        "color":  "Attention" if t.severity.value in ("CRITICAL","HIGH") else "Default",
+                    },
+                    {
+                        "type":  "TextBlock",
+                        "text":  t.root_cause_summary,
+                        "wrap":  True,
+                        "color": "Default",
+                    },
+                    {"type": "FactSet", "facts": facts},
+                ],
+            }
+        }]
+    }
+
+    resp = httpx.post(TEAMS_WEBHOOK_URL, json=payload, timeout=NOTIFY_TIMEOUT_S)
+    resp.raise_for_status()

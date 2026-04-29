@@ -6,7 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core import config  # Ensures .env is loaded on startup
+from core import config
 import streamlit as st
 
 st.set_page_config(

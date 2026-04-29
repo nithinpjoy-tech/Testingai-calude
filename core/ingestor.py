@@ -1,13 +1,22 @@
 """
-core/ingestor.py
-----------------
-Auto-detects format (JSON / XML / raw log) and returns a normalised TestRun.
-All downstream services consume TestRun — format details stay here.
+core/ingestor.py  — Milestone 2: raw log ingestion added
+---------------------------------------------------------
+Supports JSON, XML, and raw device log (*.log / *.txt).
 
-TODO (Step 2): implement _from_raw_log() — regex + LLM-assisted parser
+Raw log parser uses regex to extract:
+  - DUT metadata from comment header lines
+  - Log events (timestamp / severity / source / message)
+  - Verdict from final comment line
+  - Config snapshot from inline JSON comment blocks (optional)
+
+For devices that don't write structured headers, falls back to
+extracting all log lines as error_logs and marking verdict as INCONCLUSIVE
+unless a "verdict: FAIL/PASS" comment is found.
 """
 from __future__ import annotations
+
 import json
+import re
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -20,7 +29,7 @@ log = get_logger(__name__)
 
 
 def ingest(file_path: str) -> TestRun:
-    """Auto-detect format from extension and return a normalised TestRun."""
+    """Auto-detect format by extension and return a normalised TestRun."""
     path = Path(file_path)
     if not path.exists():
         raise FileNotFoundError(f"Input file not found: {file_path}")
@@ -35,7 +44,7 @@ def ingest(file_path: str) -> TestRun:
     elif suffix in {".log", ".txt"}:
         return _from_raw_log(path)
     else:
-        raise ValueError(f"Unsupported file type: {suffix}")
+        raise ValueError(f"Unsupported file type: {suffix}. Supported: .json .xml .log .txt")
 
 
 # ── Format parsers ────────────────────────────────────────────────────────────
@@ -53,27 +62,146 @@ def _from_xml(path: Path) -> TestRun:
 
 def _from_raw_log(path: Path) -> TestRun:
     """
-    Parse raw device log into TestRun.
-    TODO (Step 2): regex-based extraction of DUT, verdict, errors.
-    For now returns a minimal stub from filename so the pipeline doesn't crash.
+    Parse a raw device log file into a TestRun.
+
+    Expected log format (# comment lines carry metadata):
+      # Device: <vendor> <model>  FW: <firmware>  Serial: <serial>
+      # Capture start: <ISO timestamp>
+      YYYY-MM-DDTHH:MM:SS.sssZ [LEVEL] source: message
+      ...
+      # End of log — test verdict: FAIL|PASS
+
+    Also supports the NBN sample log format used in pppoe_vlan_mismatch.log.
     """
-    raise NotImplementedError("Raw log ingestion: implement in Step 2")
+    text  = path.read_text()
+    lines = text.splitlines()
+
+    # ── Extract metadata from # comment header ────────────────────────────────
+    device_id = "unknown"
+    vendor    = "unknown"
+    model_    = "unknown"
+    firmware  = "unknown"
+    timestamp = datetime.utcnow()
+    verdict   = Verdict.INCONCLUSIVE
+    failure_summary = None
+
+    for line in lines:
+        s = line.strip()
+        if not s.startswith("#"):
+            continue
+
+        # Device line: "# Device: NetComm NF18ACV  FW: 3.7.2-r4  Serial: NF18ACV-19A4-002871"
+        m = re.search(r"Device:\s+(\S+)\s+(\S+)\s+FW:\s+(\S+)\s+Serial:\s+(\S+)", s, re.I)
+        if m:
+            vendor, model_, firmware, device_id = m.group(1,2,3,4)
+
+        # Capture timestamp: "# Capture start: 2026-04-28T03:14:20Z"
+        m = re.search(r"Capture\s+start:\s+(\S+)", s, re.I)
+        if m:
+            try:
+                timestamp = datetime.fromisoformat(m.group(1).replace("Z", "+00:00"))
+            except ValueError:
+                pass
+
+        # Verdict: "# End of log — test verdict: FAIL"  or  "# test verdict: PASS"
+        m = re.search(r"(?:test\s+)?verdict:\s+(PASS|FAIL|BLOCKED|INCONCLUSIVE)", s, re.I)
+        if m:
+            verdict = Verdict(m.group(1).upper())
+
+        # Failure summary: "# Failure summary: ..."
+        m = re.search(r"Failure\s+summary:\s+(.+)", s, re.I)
+        if m:
+            failure_summary = m.group(1).strip()
+
+    # ── Extract log events (non-comment lines) ────────────────────────────────
+    # Pattern: 2026-04-28T03:14:21.003Z [INFO ] ntd.pppoe: Starting PPPoE...
+    event_re = re.compile(
+        r"^(?P<ts>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[\.\d]*Z?)"
+        r"\s+\[(?P<sev>[A-Z ]+)\]"
+        r"\s+(?P<src>[^\s:]+):\s*"
+        r"(?P<msg>.+)$"
+    )
+    error_logs: list[str] = []
+    for line in lines:
+        s = line.strip()
+        if not s or s.startswith("#"):
+            continue
+        m = event_re.match(s)
+        if m:
+            ts  = m.group("ts")
+            sev = m.group("sev").strip()
+            src = m.group("src")
+            msg = m.group("msg")
+            error_logs.append(f"[{ts}] {sev:<6} {src}: {msg}")
+        else:
+            # Unstructured line — include as-is (avoids data loss)
+            error_logs.append(s)
+
+    # ── Build minimal config snapshot from log evidence ───────────────────────
+    # Look for key=value patterns in log messages that reveal config
+    config_snapshot: dict = {}
+    vlan_re = re.compile(r"vlan[-_]?id?[=:\s]+(\d+)", re.I)
+    for entry in error_logs:
+        m = vlan_re.search(entry)
+        if m:
+            # Take first VLAN seen as configured value
+            if "ntd" not in config_snapshot:
+                config_snapshot["ntd"] = {"interface_wan0_vlan": int(m.group(1))}
+            break
+
+    # Expected VLAN from log: "expected service-vlan 2" or "expected=2"
+    exp_re = re.compile(r"expected(?:\s+service-?vlan|\s*=\s*|\s+)(\d+)", re.I)
+    for entry in error_logs:
+        m = exp_re.search(entry)
+        if m:
+            config_snapshot.setdefault("olt_port", {})["service_vlan"] = int(m.group(1))
+            break
+
+    # ── Determine test case name from filename ────────────────────────────────
+    test_case_id   = path.stem.upper().replace("-", "_")
+    test_case_name = path.stem.replace("_", " ").replace("-", " ").title()
+
+    extra: dict = {}
+    if failure_summary:
+        extra["failure_summary"] = failure_summary
+    if config_snapshot:
+        extra["config_snapshot"] = config_snapshot
+
+    dut = DeviceUnderTest(
+        device_id         = device_id,
+        vendor            = vendor,
+        model             = model_,
+        firmware          = firmware,
+        access_technology = "FTTP",   # default; override if detectable in log
+    )
+
+    return TestRun(
+        run_id           = str(uuid.uuid4()),
+        test_case_id     = test_case_id,
+        test_case_name   = test_case_name,
+        timestamp        = timestamp,
+        verdict          = verdict,
+        dut              = dut,
+        metrics          = [],      # no structured metrics in raw log
+        error_logs       = error_logs,
+        raw_input_format = "log",
+        raw_input_path   = str(path),
+        extra_context    = extra,
+    )
 
 
-# ── Normalised mapping ────────────────────────────────────────────────────────
+# ── Normalised JSON/XML mapping ───────────────────────────────────────────────
 
 def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
-    """Map a parsed dict → TestRun regardless of source format."""
-
-    # DUT — support both 'dut' (dict) and 'duts' (list, take first NTD)
+    # DUT — support both 'dut' (dict) and 'duts' (list)
     dut_raw = data.get("dut") or {}
     if not dut_raw and "duts" in data:
         duts_val = data["duts"]
-        # XML parser wraps repeated <dut> as {"dut": [...]}, JSON uses a plain list
         if isinstance(duts_val, dict) and "dut" in duts_val:
             duts_val = duts_val["dut"]
         if isinstance(duts_val, list):
-            ntd = next((d for d in duts_val if isinstance(d, dict) and d.get("role") == "NTD"), duts_val[0])
+            ntd = next((d for d in duts_val if isinstance(d, dict) and d.get("role") == "NTD"),
+                       duts_val[0])
         else:
             ntd = duts_val
         dut_raw = ntd if isinstance(ntd, dict) else {}
@@ -87,7 +215,7 @@ def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
         management_ip     = dut_raw.get("mgmt_address") or dut_raw.get("management_ip"),
     )
 
-    # Metrics — from pass_criteria + measurements (JSON schema)
+    # Metrics
     metrics: list[TestMetric] = []
     measurements = {m["name"]: m for m in data.get("measurements", [])}
     for criterion in data.get("pass_criteria", []):
@@ -100,18 +228,16 @@ def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
             verdict  = Verdict.PASS if criterion.get("passed") else Verdict.FAIL,
         ))
 
-    # Error logs — flatten log_events (JSON list or XML {"event": [...]})
+    # Log events — JSON list or XML {"event": [...]}
     raw_events = data.get("log_events", [])
-    if isinstance(raw_events, dict):           # XML wraps repeated <event> tags
+    if isinstance(raw_events, dict):
         raw_events = raw_events.get("event", [])
-    if isinstance(raw_events, dict):           # single event element
+    if isinstance(raw_events, dict):
         raw_events = [raw_events]
     error_logs = [
         "[{}] {:6s} {}: {}".format(
-            e.get("timestamp", ""),
-            str(e.get("severity", "INFO")).upper(),
-            e.get("source", ""),
-            e.get("message", ""),
+            e.get("timestamp", ""), str(e.get("severity", "INFO")).upper(),
+            e.get("source", ""),    e.get("message", ""),
         )
         for e in raw_events if isinstance(e, dict)
     ]
@@ -134,8 +260,7 @@ def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
         extra_context     = {
             k: data[k] for k in (
                 "config_snapshot", "failure_summary", "speed_tier",
-                "pre_conditions", "test_parameters", "description",
-                "build_version",
+                "pre_conditions", "test_parameters", "description", "build_version",
             ) if k in data
         },
     )
@@ -144,24 +269,17 @@ def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
 # ── XML helper ────────────────────────────────────────────────────────────────
 
 def _xml_to_dict(element: ET.Element) -> dict | list | str:
-    """Recursively convert an XML element to a Python dict/list/str."""
     children = list(element)
     if not children:
         return element.text or ""
-
-    # Detect repeated tags → list
     tags = [c.tag for c in children]
-    if len(tags) != len(set(tags)):
-        # Has duplicates — collect into a list under the common tag
-        result: dict = {}
-        for child in children:
-            val = _xml_to_dict(child)
-            if child.tag in result:
-                if not isinstance(result[child.tag], list):
-                    result[child.tag] = [result[child.tag]]
-                result[child.tag].append(val)
-            else:
-                result[child.tag] = val
-        return result
-
-    return {child.tag: _xml_to_dict(child) for child in children}
+    result: dict = {}
+    for child in children:
+        val = _xml_to_dict(child)
+        if child.tag in result:
+            if not isinstance(result[child.tag], list):
+                result[child.tag] = [result[child.tag]]
+            result[child.tag].append(val)
+        else:
+            result[child.tag] = val
+    return result
