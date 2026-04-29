@@ -53,6 +53,43 @@ section[data-testid="stSidebar"] .stButton[data-active="true"] button {
   border-color: var(--c-accent) !important;
 }
 
+/* Logo Button styling (First button in sidebar) */
+section[data-testid="stSidebar"] div.stButton:first-of-type button {
+    background: transparent !important;
+    border: none !important;
+    padding: 0.5rem 0 1rem 0 !important;
+    text-align: left !important;
+    display: block !important;
+    width: 100% !important;
+    box-shadow: none !important;
+}
+section[data-testid="stSidebar"] div.stButton:first-of-type button:hover {
+    background: transparent !important;
+    border: none !important;
+}
+section[data-testid="stSidebar"] div.stButton:first-of-type button p {
+    font-size: 1.8rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    background: linear-gradient(90deg, #FFFFFF, #E8612C);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+section[data-testid="stSidebar"] div.stButton:first-of-type button::after {
+    content: "AI powered Network test intelligence platform.";
+    display: block;
+    font-size: 0.75rem;
+    opacity: 0.8;
+    margin-top: 4px;
+    line-height: 1.3;
+    font-weight: 500;
+    color: #FFFFFF;
+    -webkit-text-fill-color: initial;
+    text-transform: none;
+    text-align: left;
+}
+
 /* Cards */
 .tt-card {
   background: var(--c-surface);

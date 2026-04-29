@@ -12,17 +12,10 @@ PAGES = [
 
 def render_sidebar() -> None:
     with st.sidebar:
-        # Logo / title block
-        st.markdown("""
-        <div style="padding:0.5rem 0 1rem 0;">
-          <div style="font-size:1.8rem;font-weight:900;letter-spacing:-1px;background: linear-gradient(90deg, #FFFFFF, #E8612C); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
-            NTIP
-          </div>
-          <div style="font-size:0.75rem;opacity:0.8;margin-top:4px;line-height:1.3;font-weight:500;">
-            AI powered Network test intelligence platform.
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Logo / title block (styled as logo via CSS in app.py)
+        if st.button("NTIP", key="nav_logo_btn", use_container_width=True):
+            st.session_state.active_page = "dashboard"
+            st.rerun()
 
         st.markdown("---")
 
@@ -55,8 +48,11 @@ def render_sidebar() -> None:
                     if k == "exec_done": st.session_state[k] = False
                 st.rerun()
 
-        st.markdown("---")
-        st.caption("v0.1.0-milestone1  •  Claude Sonnet 4")
+        st.markdown("""
+        <div style="position: fixed; bottom: 15px; left: 20px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); z-index: 999999;">
+            v0.1.0-milestone1 • Claude Sonnet 4
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def _readiness_dot(page_key: str) -> str:
