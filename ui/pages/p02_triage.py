@@ -1,10 +1,7 @@
-"""
-p02_triage.py — Triage page: test run summary, Claude analysis, root cause + recommendations.
-Features: #4 severity, #5 root cause, #6 recommendations, #7 token usage.
-"""
+# New triage implementation (uploaded from downloads)
+
 from __future__ import annotations
 import json
-
 import streamlit as st
 
 from core.triage_engine import analyse
@@ -12,7 +9,6 @@ from core.models import Severity, Verdict
 import db.store as store
 from core.reporter import to_run_record
 from db.store import upsert_run
-
 
 # Severity display config
 _SEV = {
@@ -34,27 +30,22 @@ def render() -> None:
 
     st.markdown("## 🧠 Triage Analysis")
 
-    # ── Test run summary card ─────────────────────────────────────────────────
-    vrd     = run.verdict.value
+    # Test run summary card
+    vrd = run.verdict.value
     vrd_col = "#C0392B" if vrd == "FAIL" else "#1E8449"
     st.markdown(f"""
-    <div class='tt-card tt-card-accent'>
-      <div style='display:flex;justify-content:space-between;align-items:flex-start;'>
-        <div>
-          <div style='font-size:1.05rem;font-weight:700;color:#1A3557;'>
-            {run.test_case_name}
-          </div>
-          <div style='font-size:0.82rem;color:#6B7885;margin-top:3px;'>
-            {run.test_case_id} &nbsp;·&nbsp; {run.dut.access_technology}
-            &nbsp;·&nbsp; {run.timestamp.strftime('%Y-%m-%d %H:%M UTC')}
-          </div>
-        </div>
-        <span class='badge badge-{"fail" if vrd=="FAIL" else "pass"}'
-              style='font-size:0.9rem;padding:5px 14px;'>{vrd}</span>
-      </div>
-    </div>""", unsafe_allow_html=True)
+<div class='tt-card tt-card-accent'>
+  <div style='display:flex;justify-content:space-between;align-items:flex-start;'>
+    <div>
+      <div style='font-size:1.05rem;font-weight:700;color:#1A3557;'>{run.test_case_name}</div>
+      <div style='font-size:0.82rem;color:#6B7885;margin-top:3px;'>{run.test_case_id} &nbsp;·&nbsp; {run.dut.access_technology}&nbsp;·&nbsp; {run.timestamp.strftime('%Y-%m-%d %H:%M UTC')}</div>
+    </div>
+    <span class='badge badge-{"fail" if vrd=="FAIL" else "pass"}' style='font-size:0.9rem;padding:5px 14px;'>{vrd}</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    # ── DUT + metrics ─────────────────────────────────────────────────────────
+    # DUT + metrics
     with st.expander("📋 Device Under Test", expanded=False):
         c1, c2 = st.columns(2)
         c1.markdown(f"**Vendor:** {run.dut.vendor}")
@@ -70,14 +61,10 @@ def render() -> None:
     with st.expander("📊 Test Metrics", expanded=False):
         if run.metrics:
             for m in run.metrics:
-                icon  = "✅" if m.verdict == Verdict.PASS else "❌"
-                tol   = f" ±{m.tolerance}" if m.tolerance else ""
-                unit  = m.unit or ""
-                st.markdown(
-                    f"{icon} **{m.name}** — "
-                    f"expected `{m.expected}{unit}`{tol} · "
-                    f"measured `{m.measured}{unit}`"
-                )
+                icon = "✅" if m.verdict == Verdict.PASS else "❌"
+                tol = f" ±{m.tolerance}" if m.tolerance else ""
+                unit = m.unit or ""
+                st.markdown(f"{icon} **{m.name}** — expected `{m.expected}{unit}`{tol} · measured `{m.measured}{unit}`")
         else:
             st.info("No metric data in this test run.")
 
@@ -93,9 +80,8 @@ def render() -> None:
 
     st.markdown("---")
 
-    # ── Triage action ─────────────────────────────────────────────────────────
+    # Triage action
     triage = st.session_state.get("triage_result")
-
     if not triage:
         st.markdown("### Run Claude Analysis")
         col_btn, col_info = st.columns([1, 3])
@@ -114,70 +100,56 @@ def render() -> None:
                 except Exception as exc:
                     st.error(f"Triage failed: {exc}")
         col_info.info(
-            "Analyse the test failure, identify the root cause, "
-            "and provide ranked recommendations."
+            "Analyse the test failure, identify the root cause, and provide ranked recommendations."
         )
         return
 
-    # ── Results ───────────────────────────────────────────────────────────────
+    # Results display
     sev = triage.severity.value
     colour, bg, icon = _SEV.get(sev, ("#6B7885", "#F8F9FA", "ℹ️"))
 
-    # Severity + confidence banner
     st.markdown(f"""
-    <div style='background:{bg};border:1px solid {colour};border-radius:8px;
-      padding:1rem 1.5rem;margin-bottom:1rem;'>
-      <div style='display:flex;justify-content:space-between;align-items:center;'>
-        <div style='font-size:1.1rem;font-weight:700;color:{colour};'>
-          {icon}&nbsp; {sev} SEVERITY
-        </div>
-        <div style='font-size:0.88rem;color:#444;'>
-          Confidence: <b style='color:{colour};'>{triage.confidence:.0%}</b>
-          &nbsp;·&nbsp; Model: {triage.claude_model}
-        </div>
-      </div>
-    </div>""", unsafe_allow_html=True)
+<div style='background:{bg};border:1px solid {colour};border-radius:8px;padding:1rem 1.5rem;margin-bottom:1rem;'>
+  <div style='display:flex;justify-content:space-between;align-items:center;'>
+    <div style='font-size:1.1rem;font-weight:700;color:{colour};'>{icon}  {sev} SEVERITY</div>
+    <div style='font-size:0.88rem;color:#444;'>Confidence: <b style='color:{colour};'>{triage.confidence:.0%}</b> ·  Model: {triage.claude_model}</div>
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
-    # Root cause
     st.markdown("### 🎯 Root Cause")
     st.markdown(f"""
-    <div class='tt-card' style='border-left:4px solid {colour};'>
-      <div style='font-size:1rem;font-weight:600;color:#1A3557;margin-bottom:0.5rem;'>
-        {triage.root_cause_summary}
-      </div>
-      <div style='font-size:0.88rem;color:#333;line-height:1.6;white-space:pre-wrap;'>
-        {triage.root_cause_detail}
-      </div>
-    </div>""", unsafe_allow_html=True)
+<div class='tt-card' style='border-left:4px solid {colour};'>
+  <div style='font-size:1rem;font-weight:600;color:#1A3557;margin-bottom:0.5rem;'>{triage.root_cause_summary}</div>
+  <div style='font-size:0.88rem;color:#333;line-height:1.6;white-space:pre-wrap;'>{triage.root_cause_detail}</div>
+</div>
+""", unsafe_allow_html=True)
 
-    # Recommendations
     st.markdown("### 📋 Recommendations")
     for rec in triage.recommendations:
         effort_html = (
-            f"<span style='float:right;font-size:0.75rem;color:#6B7885;'>"
-            f"⏱ {rec.estimated_effort}</span>"
+            f"<span style='float:right;font-size:0.75rem;color:#6B7885;'>⏱ {rec.estimated_effort}</span>"
             if rec.estimated_effort else ""
         )
         st.markdown(f"""
-        <div class='tt-card' style='margin-bottom:0.5rem;'>
-          {effort_html}
-          <div style='font-size:0.82rem;color:{colour};font-weight:700;margin-bottom:4px;'>
-            PRIORITY {rec.priority}
-          </div>
-          <div style='font-weight:600;color:#1A3557;margin-bottom:4px;'>{rec.action}</div>
-          <div style='font-size:0.85rem;color:#555;'>{rec.rationale}</div>
-        </div>""", unsafe_allow_html=True)
+<div class='tt-card' style='margin-bottom:0.5rem;'>
+  {effort_html}
+  <div style='font-size:0.82rem;color:{colour};font-weight:700;margin-bottom:4px;'>PRIORITY {rec.priority}</div>
+  <div style='font-weight:600;color:#1A3557;margin-bottom:4px;'>{rec.action}</div>
+  <div style='font-size:0.85rem;color:#555;'>{rec.rationale}</div>
+</div>
+""", unsafe_allow_html=True)
 
-    # Token usage
+    st.markdown("#### Token usage")
     with st.expander("🔢 Token usage"):
         tc1, tc2, tc3 = st.columns(3)
-        tc1.metric("Input tokens",  f"{triage.prompt_tokens:,}")
+        tc1.metric("Input tokens", f"{triage.prompt_tokens:,}")
         tc2.metric("Output tokens", f"{triage.completion_tokens:,}")
-        tc3.metric("Total tokens",  f"{triage.prompt_tokens + triage.completion_tokens:,}")
+        tc3.metric("Total tokens", f"{triage.prompt_tokens + triage.completion_tokens:,}")
 
     st.markdown("---")
 
-    # Navigate to remediation
+    # Navigation to remediation
     col1, col2 = st.columns([1, 3])
     if col1.button("🔧 Generate Fix Script →", type="primary", use_container_width=True):
         st.session_state.active_page = "remediation"
