@@ -99,7 +99,7 @@ def render() -> None:
     if not triage:
         st.markdown("### Run Claude Analysis")
         col_btn, col_info = st.columns([1, 3])
-        if col_btn.button("🧠 Analyse with Claude", type="primary", use_container_width=True):
+        if col_btn.button("🧠 Analyse with AI", type="primary", use_container_width=True):
             with st.spinner("Sending to Claude — analysing failure context..."):
                 try:
                     result = analyse(run)
