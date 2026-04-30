@@ -6,6 +6,8 @@ Displays: workflow stepper, KPI cards, recent runs, failure categories, KB summa
 Redesigned dashboard for workflow status, KPIs, recent runs, and KB summary.
 """
 
+import html as _html
+
 import streamlit as st
 from ui.theme import (
     inject_theme, stepper, topbar, sev_badge, kpi_card,
@@ -28,6 +30,23 @@ def _kpi_row(stats: dict) -> None:
     st.markdown(html, unsafe_allow_html=True)
 
 
+def _load_run_detail(run_id: str) -> None:
+    from core.models import RunReport
+    from db.store import get_report_json
+    raw = get_report_json(run_id)
+    if not raw:
+        st.error("Full report data is not available for this run.")
+        return
+    report = RunReport.model_validate_json(raw)
+    st.session_state.current_run = report.test_run
+    st.session_state.triage_result = report.triage
+    st.session_state.fix_script = report.fix_script
+    st.session_state.exec_results = list(report.execution.steps) if report.execution else []
+    st.session_state.detail_back_page = "p01"
+    st.session_state.page = "p08"
+    st.rerun()
+
+
 def _recent_runs(runs: list) -> None:
     st.markdown('<div class="tt-card">', unsafe_allow_html=True)
     st.markdown(
@@ -47,19 +66,39 @@ def _recent_runs(runs: list) -> None:
         )
     else:
         for run in runs[:6]:
+            run_id = run.get("run_id", "")
             dot_cls = "pass" if run.get("status") == "resolved" else (
                 "fail" if run.get("status") == "failed" else "pending"
             )
-            html = (
-                f'<div class="tt-run-row">'
-                f'<span class="tt-run-dot {dot_cls}"></span>'
-                f'<span class="tt-run-name" title="{run.get("name","")}">'
-                f'{run.get("name","—")}</span>'
-                f'{sev_badge(run.get("severity",""))}'
-                f'<span class="tt-run-meta">{run.get("time","")}</span>'
-                f'</div>'
-            )
-            st.markdown(html, unsafe_allow_html=True)
+            row = st.columns([0.04, 1, 0.38, 0.2, 0.18])
+            with row[0]:
+                st.markdown(
+                    f'<div style="padding-top:9px">'
+                    f'<span class="tt-run-dot {dot_cls}"></span></div>',
+                    unsafe_allow_html=True,
+                )
+            with row[1]:
+                st.markdown(
+                    f'<div style="padding:6px 0;font-size:11px;font-weight:500;'
+                    f'color:#1C2B3A;white-space:nowrap;overflow:hidden;'
+                    f'text-overflow:ellipsis" title="{_html.escape(run.get("name",""))}">'
+                    f'{_html.escape(run.get("name","—"))}</div>',
+                    unsafe_allow_html=True,
+                )
+            with row[2]:
+                st.markdown(
+                    f'<div style="padding:4px 0">{sev_badge(run.get("severity",""))}</div>',
+                    unsafe_allow_html=True,
+                )
+            with row[3]:
+                st.markdown(
+                    f'<div style="padding:6px 0;font-size:10px;font-family:monospace;'
+                    f'color:#9BA8B3">{run.get("time","")}</div>',
+                    unsafe_allow_html=True,
+                )
+            with row[4]:
+                if run_id and st.button("View", key=f"dash_run_{run_id}", use_container_width=True):
+                    _load_run_detail(run_id)
 
     st.markdown("</div></div>", unsafe_allow_html=True)
 

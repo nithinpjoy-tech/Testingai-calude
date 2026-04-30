@@ -23,7 +23,8 @@ def _load_report_into_session(run_id: str) -> None:
     st.session_state.triage_result = report.triage
     st.session_state.fix_script = report.fix_script
     st.session_state.exec_results = list(report.execution.steps) if report.execution else []
-    st.session_state.page = "p05"
+    st.session_state.detail_back_page = "history"
+    st.session_state.page = "p08"
     st.rerun()
 
 

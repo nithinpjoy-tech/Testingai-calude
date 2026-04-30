@@ -111,6 +111,7 @@ def get_recent_runs(limit: int = 6) -> list[dict[str, str]]:
     }
     return [
         {
+            "run_id": str(run.id),
             "status": status_map.get(run.status, "failed" if run.verdict == Verdict.FAIL else "pending"),
             "name": run.test_case,
             "severity": run.severity.value if run.severity else "",

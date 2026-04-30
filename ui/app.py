@@ -128,6 +128,9 @@ elif page == "p05":
 elif page == "p06":
     _p = _load("ui.pages.p06_knowledge")
     _p.render()
+elif page == "p08":
+    _p = _load("ui.pages.p08_run_detail")
+    _p.render()
 elif page == "history":
     _p = _load("ui.pages.p07_history")
     _p.render()
