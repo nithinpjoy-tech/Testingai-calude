@@ -1,74 +1,115 @@
-"""ui/components/sidebar.py — Navigation + session info."""
-import streamlit as st
-from core.models import Verdict
+"""Sidebar navigation styled to match the provided console mockup."""
 
-PAGES = [
-    ("dashboard",      "📊", "Dashboard"),
-    ("triage",         "🧠", "Triage"),
-    ("remediation",    "🔧", "Remediation"),
-    ("comparison",     "⚖️", "Compare Runs"),
-    ("replay",         "▶️", "Replay"),
-    ("knowledge_base", "📚", "Knowledge Base"),
+from __future__ import annotations
+
+from datetime import datetime
+
+import streamlit as st
+
+WORKFLOW_PAGES = [
+    ("p01", "Dashboard", "grid"),
+    ("p02", "Triage", "clock"),
+    ("p03", "Fix Script", "doc"),
+    ("p04", "Execute", "play"),
+    ("p05", "Results", "list"),
 ]
 
-def render_sidebar() -> None:
+RESOURCE_PAGES = [
+    ("p06", "Knowledge Base", "book"),
+    ("history", "History", "archive"),
+]
+
+_SVG = {
+    "grid": '<rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/>',
+    "clock": '<circle cx="8" cy="8" r="6"/><path d="M8 5v4l3 1.5" stroke-linecap="round"/>',
+    "doc": '<path d="M4 6h8M4 10h5" stroke-linecap="round"/><rect x="2" y="2" width="12" height="12" rx="2"/>',
+    "play": '<polygon points="5,3 13,8 5,13"/>',
+    "list": '<path d="M3 5h10M3 8h7M3 11h5" stroke-linecap="round"/>',
+    "book": '<path d="M2 4h12v10H2zM2 4l6-2 6 2" stroke-linecap="round"/>',
+    "archive": '<path d="M8 2v12M4 8l4-4 4 4" stroke-linecap="round"/>',
+}
+
+
+def _icon(name: str) -> str:
+    return (
+        '<svg class="tt-sidebar-icon" viewBox="0 0 16 16" fill="none" '
+        f'stroke="currentColor" stroke-width="1.5">{_SVG.get(name, "")}</svg>'
+    )
+
+
+def _section(label: str) -> None:
+    st.markdown(f'<div class="tt-sidebar-section">{label}</div>', unsafe_allow_html=True)
+
+
+def _item(page_id: str, label: str, icon: str, badge: int = 0) -> None:
+    is_active = st.session_state.get("page", "p01") == page_id
+    badge_html = f'<span class="tt-sidebar-badge-count">{badge}</span>' if badge else ""
+    icon_html  = _icon(icon)
+    active_cls = "tt-sidebar-item active" if is_active else "tt-sidebar-item"
+    
+    # Use a link with a query parameter for navigation
+    # This gives us full control over the HTML/CSS
+    st.markdown(
+        f'<a class="{active_cls}" href="/?page={page_id}" target="_self">'
+        f'{icon_html}'
+        f'<span>{label}</span>'
+        f'{badge_html}'
+        '</a>',
+        unsafe_allow_html=True
+    )
+
+def handle_nav() -> None:
+    """Check query params for page navigation."""
+    params = st.query_params
+    if "page" in params:
+        st.session_state.page = params["page"]
+        # Clear the param to avoid redirect loops if needed, 
+        # but Streamlit usually handles this fine.
+
+
+def render_sidebar(pending_count: int = 0, api_ok: bool = True) -> None:
+    handle_nav()
     with st.sidebar:
-        # Logo / title block (styled as logo via CSS in app.py)
-        if st.button("NTIP", key="nav_logo_btn", type="tertiary", use_container_width=True):
-            st.session_state.active_page = "dashboard"
-            st.rerun()
+        st.markdown(
+            '<div class="tt-sidebar-logo">'
+            '<div class="tt-sidebar-title">NTIP</div>'
+            '<div class="tt-sidebar-sub">AI Powered Test Intelligent Platform</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("---")
+        _section("Workflow")
+        st.markdown('<div class="tt-sidebar-nav">', unsafe_allow_html=True)
+        for page_id, label, icon in WORKFLOW_PAGES:
+            _item(page_id, label, icon, pending_count if page_id == "p02" else 0)
+        st.markdown("</div>", unsafe_allow_html=True)
 
-        for key, icon, label in PAGES:
-            active = st.session_state.get("active_page") == key
-            # Indicate readiness with subtle dot
-            dot = _readiness_dot(key)
-            btn_label = f"{icon}  {label} {dot}"
-            if st.button(btn_label, key=f"nav_{key}", use_container_width=True):
-                st.session_state.active_page = key
-                st.rerun()
+        st.markdown('<div class="tt-sidebar-divider"></div>', unsafe_allow_html=True)
 
-        st.markdown("---")
+        st.markdown('<div class="tt-sidebar-resources">', unsafe_allow_html=True)
+        _section("Resources")
+        st.markdown('<div class="tt-sidebar-nav">', unsafe_allow_html=True)
+        for page_id, label, icon in RESOURCE_PAGES:
+            _item(page_id, label, icon)
+        st.markdown("</div></div>", unsafe_allow_html=True)
 
-        # Current run info
-        run = st.session_state.get("current_run")
-        if run:
-            v = run.verdict.value
-            colour = "#C0392B" if v == "FAIL" else "#27AE60"
-            st.markdown(f"""
-            <div style="font-size:0.78rem;opacity:0.85;">
-              <b>Active Run</b><br>
-              <span style="font-size:0.72rem;">{run.test_case_id}</span><br>
-              <span style="color:{colour};font-weight:700;">{v}</span>
-              &nbsp;·&nbsp;{run.dut.access_technology}
-            </div>""", unsafe_allow_html=True)
-            if st.button("✕  Clear session", key="clear_session", use_container_width=True):
-                for k in ["current_run","triage_result","fix_script","exec_log","exec_done","approved"]:
-                    st.session_state[k] = [] if k == "exec_log" else None if k != "approved" else False
-                    if k == "exec_done": st.session_state[k] = False
-                st.rerun()
+        st.markdown(
+            '<a class="tt-sidebar-clear" href="?clear_session=1" target="_self">'
+            '<span>↺</span><span>Clear session</span>'
+            '</a>',
+            unsafe_allow_html=True,
+        )
 
-        st.markdown("""
-        <div style="position: fixed; bottom: 15px; left: 20px; font-size: 0.75rem; color: rgba(255, 255, 255, 0.4); z-index: 999999;">
-            v0.1.0-milestone1 • Claude Sonnet 4
-        </div>
-        """, unsafe_allow_html=True)
-
-
-def _readiness_dot(page_key: str) -> str:
-    """Tiny indicator showing whether the page has data ready."""
-    run    = st.session_state.get("current_run")
-    triage = st.session_state.get("triage_result")
-    script = st.session_state.get("fix_script")
-    done   = st.session_state.get("exec_done")
-
-    ready = {
-        "dashboard":      True,
-        "triage":         run is not None,
-        "remediation":    triage is not None,
-        "comparison":     True,
-        "replay":         True,
-        "knowledge_base": True,
-    }
-    return "🟢" if ready.get(page_key) else "⚪"
+        dot_colour = "#4CAF50" if api_ok else "#C62828"
+        dot_label = "Connected" if api_ok else "Disconnected"
+        now = datetime.now().strftime("%d %b, %H:%M")
+        st.markdown(
+            '<div class="tt-sidebar-status">'
+            '<div class="tt-sidebar-status-label">API Status</div>'
+            f'<div class="tt-sidebar-status-val"><span class="tt-dot" style="background:{dot_colour}"></span>{dot_label}</div>'
+            '<div style="margin-top:6px">'
+            '<div class="tt-sidebar-status-label">Run today</div>'
+            f'<div class="tt-sidebar-status-val" style="color:rgba(255,255,255,.55)">{pending_count} pending - {now}</div>'
+            '</div></div>',
+            unsafe_allow_html=True,
+        )

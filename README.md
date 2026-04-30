@@ -1,6 +1,6 @@
-# NBN Test Triage Tool — Milestone 1 Framework
+# Test Triage Tool — Milestone 1 Framework
 
-AI-powered test failure troubleshooter for NBN access network testing.
+AI-powered test failure troubleshooter for access network testing.
 Root cause analysis via Claude, approval-gated fix scripts, step-by-step execution.
 
 ## Architecture

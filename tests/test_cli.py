@@ -4,7 +4,7 @@ All Claude API calls and DB interactions mocked.
 """
 from __future__ import annotations
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -36,7 +36,7 @@ def sample_xml():
 @pytest.fixture
 def mock_run() -> TestRun:
     return TestRun(
-        run_id="run-cli-001", test_case_id="TC001",
+        run_id="00000000-0000-0000-0000-000000000001", test_case_id="TC001",
         test_case_name="PPPoE test", timestamp=datetime(2026,4,28),
         verdict=Verdict.FAIL,
         dut=DeviceUnderTest(device_id="d1", vendor="NetComm",
@@ -51,7 +51,7 @@ def mock_run() -> TestRun:
 @pytest.fixture
 def mock_triage() -> TriageResult:
     return TriageResult(
-        run_id="run-cli-001", severity=Severity.CRITICAL,
+        run_id="00000000-0000-0000-0000-000000000001", severity=Severity.CRITICAL,
         root_cause_summary="VLAN mismatch: NTD=10 vs OLT=2",
         root_cause_detail="Detail here.", confidence=0.97,
         recommendations=[Recommendation(priority=1,
@@ -63,7 +63,7 @@ def mock_triage() -> TriageResult:
 @pytest.fixture
 def mock_script(mock_run) -> FixScript:
     script = FixScript(
-        run_id="run-cli-001", title="Fix VLAN mismatch",
+        run_id="00000000-0000-0000-0000-000000000001", title="Fix VLAN mismatch",
         steps=[
             FixStep(step_number=1, description="Read config",
                     command="show interface wan0 config", expected_output="vlan-id"),
@@ -78,18 +78,18 @@ def mock_script(mock_run) -> FixScript:
         post_checks=["show pppoe status"],
         execution_mode=ExecutionMode.SIMULATED,
         approved_by="test-operator",
-        approved_at=datetime.utcnow(),
+        approved_at=datetime.now(timezone.utc),
     )
     return script
 
 @pytest.fixture
 def mock_run_records():
     return [
-        RunRecord(id="aaaa-0001", test_case="TC_PPPOE_001",
+        RunRecord(id="00000000-0000-0000-0000-000000000001", test_case="TC_PPPOE_001",
                   verdict=Verdict.FAIL, status=RunStatus.TRIAGED,
                   severity=Severity.CRITICAL, root_cause="VLAN mismatch",
                   created_at=datetime(2026,4,28,3,14)),
-        RunRecord(id="bbbb-0002", test_case="TC_PPPOE_002",
+        RunRecord(id="00000000-0000-0000-0000-000000000002", test_case="TC_PPPOE_002",
                   verdict=Verdict.PASS, status=RunStatus.REPORTED,
                   severity=Severity.LOW, created_at=datetime(2026,4,27)),
     ]
@@ -206,7 +206,7 @@ def test_compare_two_runs(mock_get, mock_init, runner):
     mock_get.side_effect = lambda rid: _make_report_json(
         rid, f"Test {rid[:4]}", "FAIL", "CRITICAL"
     )
-    result = runner.invoke(cli, ["compare", "run-aaa", "run-bbb"])
+    result = runner.invoke(cli, ["compare", "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"])
     assert result.exit_code == 0, result.output
     assert "Comparison" in result.output or "Root cause" in result.output
 
@@ -214,7 +214,7 @@ def test_compare_two_runs(mock_get, mock_init, runner):
 @patch("db.store.get_report_json")
 def test_compare_missing_run(mock_get, mock_init, runner):
     mock_get.return_value = None
-    result = runner.invoke(cli, ["compare", "run-aaa", "run-bbb"])
+    result = runner.invoke(cli, ["compare", "00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002"])
     assert result.exit_code != 0 or "not found" in result.output.lower()
 
 
@@ -236,7 +236,7 @@ def test_replay_run(mock_get, mock_init, runner):
         ]},
     }
     mock_get.return_value = json.dumps(report)
-    result = runner.invoke(cli, ["replay", "run-aaa", "--speed", "0"])
+    result = runner.invoke(cli, ["replay", "00000000-0000-0000-0000-000000000001", "--speed", "0"])
     assert result.exit_code == 0, result.output
     assert "Step 1" in result.output
     assert "Step 2" in result.output
@@ -246,5 +246,5 @@ def test_replay_run(mock_get, mock_init, runner):
 @patch("db.store.get_report_json")
 def test_replay_missing_run(mock_get, mock_init, runner):
     mock_get.return_value = None
-    result = runner.invoke(cli, ["replay", "no-such-run"])
+    result = runner.invoke(cli, ["replay", "00000000-0000-0000-0000-000000000000"])
     assert result.exit_code != 0 or "No report" in result.output

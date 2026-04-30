@@ -39,12 +39,13 @@ def test_db_round_trip(tmp_path, monkeypatch):
     import db.store as store
     monkeypatch.setattr(store, "DB_PATH", tmp_path / "test.db")
     store.init_db()
+    run_id = "550e8400-e29b-41d4-a716-446655440000"
     record = RunRecord(
-        id="run-abc", test_case="TC_001", verdict=Verdict.FAIL,
+        id=run_id, test_case="TC_001", verdict=Verdict.FAIL,
         status=RunStatus.TRIAGED, severity=Severity.HIGH,
         root_cause="VLAN mismatch",
     )
     store.upsert_run(record)
-    loaded = store.get_run("run-abc")
+    loaded = store.get_run(run_id)
     assert loaded is not None
     assert loaded.severity == Severity.HIGH

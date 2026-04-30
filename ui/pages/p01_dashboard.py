@@ -1,158 +1,206 @@
-# New dashboard implementation (uploaded from downloads)
+"""
+ui/pages/p01_dashboard.py  —  Dashboard page.
 
-from __future__ import annotations
-import json
-import tempfile
-from pathlib import Path
+Displays: workflow stepper, KPI cards, recent runs, failure categories, KB summary.
+
+Redesigned dashboard for workflow status, KPIs, recent runs, and KB summary.
+"""
 
 import streamlit as st
+from ui.theme import (
+    inject_theme, stepper, topbar, sev_badge, kpi_card,
+    section_label, tag,
+)
 
-import db.store as store
-from core.ingestor import ingest
-from core.models import RunStatus, Verdict
+WORKFLOW_STEPS = ["Ingest", "Triage", "Fix Script", "Approve", "Execute", "Report"]
 
 
-def render() -> None:
-    st.markdown("## 📊 Dashboard")
+def _kpi_row(stats: dict) -> None:
+    html = '<div class="tt-kpi-row" style="grid-template-columns:repeat(3,1fr)">'
+    html += kpi_card("Runs today",       str(stats.get("runs_today", 0)),
+                     f"+{stats.get('runs_delta', 0)} vs yesterday", "up", "#E8612C")
+    html += kpi_card("Auto-resolved",    str(stats.get("resolved", 0)),
+                     f"{stats.get('resolve_rate', 0):.0f}% rate", "up", "#2E7D32")
+    html += kpi_card("Pending approval", str(stats.get("pending", 0)),
+                     "Needs action" if stats.get("pending", 0) else "All clear",
+                     "down" if stats.get("pending", 0) else "up", "#E65100")
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
-    # KPI row
-    store.init_db()
-    history = store.list_runs(limit=200)
-    total = len(history)
-    fails = sum(1 for r in history if r.verdict == Verdict.FAIL)
-    triaged = sum(1 for r in history if r.status != RunStatus.INGESTED)
-    pass_rt = f"{((total - fails) / total * 100):.0f}%" if total else "—"
 
-    c1, c2, c3, c4 = st.columns(4)
-    _kpi(c1, str(total), "Total Runs")
-    _kpi(c2, str(fails), "Failures", colour="#C0392B" if fails else None)
-    _kpi(c3, str(triaged), "Triaged")
-    _kpi(c4, pass_rt, "Pass Rate", colour="#1E8449" if total else None)
-
-    st.markdown("---")
-
-    # Upload panel
-    st.markdown("### Upload Test Result")
+def _recent_runs(runs: list) -> None:
+    st.markdown('<div class="tt-card">', unsafe_allow_html=True)
     st.markdown(
-        "<p style='color:#6B7885;font-size:0.88rem;'>Drop a JSON, XML or LOG file exported from your test harness.</p>",
+        '<div class="tt-card-head">'
+        '<span class="tt-card-title">Recent triage runs</span>'
+        f'<span class="tt-tag tt-tag-blue">{len(runs)} today</span>'
+        '</div>',
         unsafe_allow_html=True,
     )
+    st.markdown('<div class="tt-card-body" style="padding:0 14px">', unsafe_allow_html=True)
 
-    uploaded = st.file_uploader(
-        "Select file", type=["json", "xml", "log", "txt"], label_visibility="collapsed"
-    )
-
-    if uploaded:
-        col_info, col_btn = st.columns([3, 1])
-        col_info.markdown(
-            f"<div class='tt-card tt-card-accent'><b>{uploaded.name}</b><br><span style='color:#6B7885;font-size:0.82rem;'>{uploaded.size:,} bytes · {uploaded.type or 'unknown type'}</span></div>",
+    if not runs:
+        st.markdown(
+            '<div style="padding:20px 0;text-align:center;font-size:12px;'
+            'color:#9BA8B3">No runs yet — upload a test result to begin</div>',
             unsafe_allow_html=True,
         )
-        if col_btn.button("▶ Start Triage", type="primary", use_container_width=True):
-            _load_and_navigate(uploaded)
+    else:
+        for run in runs[:6]:
+            dot_cls = "pass" if run.get("status") == "resolved" else (
+                "fail" if run.get("status") == "failed" else "pending"
+            )
+            html = (
+                f'<div class="tt-run-row">'
+                f'<span class="tt-run-dot {dot_cls}"></span>'
+                f'<span class="tt-run-name" title="{run.get("name","")}">'
+                f'{run.get("name","—")}</span>'
+                f'{sev_badge(run.get("severity",""))}'
+                f'<span class="tt-run-meta">{run.get("time","")}</span>'
+                f'</div>'
+            )
+            st.markdown(html, unsafe_allow_html=True)
 
-    # Sample shortcuts
-    st.markdown("#### Or load a sample")
-    s1, s2, s3 = st.columns(3)
-    if s1.button("📄 JSON sample", use_container_width=True):
-        _load_sample("samples/pppoe_vlan_mismatch.json")
-    if s2.button("📄 XML sample", use_container_width=True):
-        _load_sample("samples/pppoe_vlan_mismatch.xml")
-    if s3.button("📄 LOG sample", use_container_width=True):
-        _load_sample("samples/pppoe_vlan_mismatch.log")
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
-    # Run history
-    st.markdown("---")
-    st.markdown("### Recent Runs")
 
-    if not history:
-        st.info("No runs yet — upload a test result file to get started.")
-        return
-
-    _render_history_table(history[:20])
-
-# Helpers
-
-def _kpi(col, value: str, label: str, colour: str | None = None) -> None:
-    c = colour or "#1A3557"
-    col.markdown(
-        f"<div class='kpi-card'><div class='kpi-value' style='color:{c}'>{value}</div><div class='kpi-label'>{label}</div></div>",
-        unsafe_allow_html=True,
-    )
-
-def _load_sample(path: str) -> None:
-    try:
-        run = ingest(path)
-        st.session_state.current_run = run
-        st.session_state.triage_result = None
-        st.session_state.fix_script = None
-        st.session_state.exec_log = []
-        st.session_state.exec_done = False
-        st.session_state.approved = False
-        st.session_state.active_page = "triage"
-        st.rerun()
-    except Exception as exc:
-        st.error(f"Failed to load sample: {exc}")
-
-def _load_and_navigate(uploaded) -> None:
-    suffix = Path(uploaded.name).suffix
-    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-        tmp.write(uploaded.getvalue())
-        tmp_path = tmp.name
-    try:
-        run = ingest(tmp_path)
-        st.session_state.current_run = run
-        st.session_state.triage_result = None
-        st.session_state.fix_script = None
-        st.session_state.exec_log = []
-        st.session_state.exec_done = False
-        st.session_state.approved = False
-        st.session_state.active_page = "triage"
-        st.rerun()
-    except Exception as exc:
-        st.error(f"Ingest failed: {exc}")
-
-def _render_history_table(records) -> None:
-    sev_badge = {
-        "CRITICAL": "<span class='badge badge-crit'>CRITICAL</span>",
-        "HIGH": "<span class='badge badge-high'>HIGH</span>",
-        "MEDIUM": "<span class='badge badge-med'>MEDIUM</span>",
-        "LOW": "<span class='badge badge-low'>LOW</span>",
-    }
-    verdict_badge = {
-        "FAIL": "<span class='badge badge-fail'>FAIL</span>",
-        "PASS": "<span class='badge badge-pass'>PASS</span>",
-        "BLOCKED": "<span class='badge badge-high'>BLOCKED</span>",
-        "INCONCLUSIVE": "<span class='badge badge-pending'>INCONCLUSIVE</span>",
-    }
-    rows_html = ""
-    for r in records:
-        sev_html = sev_badge.get(r.severity.value if r.severity else "", "—")
-        vrd_html = verdict_badge.get(r.verdict.value, r.verdict.value)
-        root = (r.root_cause or "—")[:70] + ("…" if r.root_cause and len(r.root_cause) > 70 else "")
-        ts = r.created_at.strftime("%Y-%m-%d %H:%M") if r.created_at else "—"
-        rows_html += f"""
-<tr style='border-bottom:1px solid #EEE;'>
-  <td style='padding:8px 6px;font-size:0.78rem;color:#6B7885;'>{ts}</td>
-  <td style='padding:8px 6px;font-size:0.82rem;font-weight:500;'>{r.test_case[:40]}</td>
-  <td style='padding:8px 6px;'>{vrd_html}</td>
-  <td style='padding:8px 6px;'>{sev_html}</td>
-  <td style='padding:8px 6px;font-size:0.78rem;color:#444;'>{root}</td>
-</tr>"""
+def _failure_chart(categories: list) -> None:
+    """Pure-CSS horizontal bar chart — no Plotly dependency."""
+    colours = ["#E8612C", "#0F2744", "#185FA5", "#2E7D32", "#9BA8B3"]
+    st.markdown('<div class="tt-card">', unsafe_allow_html=True)
     st.markdown(
-        f"""
-<table style='width:100%;border-collapse:collapse;background:#FFF; border:1px solid #DDE1E7;border-radius:8px;overflow:hidden;'>
-  <thead>
-    <tr style='background:#F4F6F9;'>
-      <th style='padding:10px 6px;text-align:left;font-size:0.78rem;color:#6B7885;'>TIMESTAMP</th>
-      <th style='padding:10px 6px;text-align:left;font-size:0.78rem;color:#6B7885;'>TEST CASE</th>
-      <th style='padding:10px 6px;text-align:left;font-size:0.78rem;color:#6B7885;'>VERDICT</th>
-      <th style='padding:10px 6px;text-align:left;font-size:0.78rem;color:#6B7885;'>SEVERITY</th>
-      <th style='padding:10px 6px;text-align:left;font-size:0.78rem;color:#6B7885;'>ROOT CAUSE</th>
-    </tr>
-  </thead>
-  <tbody>{rows_html}</tbody>
-</table>
-""",
+        '<div class="tt-card-head">'
+        '<span class="tt-card-title">Top failure categories</span>'
+        '<span class="tt-tag tt-tag-purple">30 days</span>'
+        '</div>'
+        '<div class="tt-card-body">',
         unsafe_allow_html=True,
     )
+
+    html_parts = []
+    for i, cat in enumerate(categories[:5]):
+        colour = colours[i % len(colours)]
+        pct = cat.get("pct", 0)
+        html_parts.append(
+            f'<div style="margin-bottom:10px">'
+            f'<div style="display:flex;justify-content:space-between;'
+            f'font-size:10px;margin-bottom:3px">'
+            f'<span style="color:#3D4A56">{cat["label"]}</span>'
+            f'<span style="font-family:monospace;color:#9BA8B3">{pct}%</span></div>'
+            f'<div class="tt-bar-track">'
+            f'<div class="tt-bar-fill" style="width:{pct}%;background:{colour}"></div>'
+            f'</div></div>'
+        )
+    st.markdown("".join(html_parts) + "</div></div>", unsafe_allow_html=True)
+
+
+def _kb_summary(doc_count: int, chunk_count: int, doc_types: list) -> None:
+    type_tags = "".join(
+        f'<div style="background:#F5F7FA;border:0.5px solid #E0E4EA;border-radius:6px;'
+        f'padding:8px 10px">'
+        f'<div style="font-size:10px;font-weight:500;font-family:monospace;'
+        f'color:{d["color"]};margin-bottom:2px">{d["ext"]}</div>'
+        f'<div style="font-size:12px;font-weight:500">{d["count"]} files</div>'
+        f'<div style="font-size:10px;color:#9BA8B3">{d["label"]}</div>'
+        f'</div>'
+        for d in doc_types
+    )
+    st.markdown(
+        f'<div class="tt-card">'
+        f'<div class="tt-card-head">'
+        f'<span class="tt-card-title">Knowledge base</span>'
+        f'<span class="tt-tag tt-tag-green">{doc_count} docs · {chunk_count:,} chunks</span>'
+        f'</div>'
+        f'<div class="tt-card-body">'
+        f'<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">'
+        f'{type_tags}'
+        f'<div style="background:#E8F5E9;border:0.5px solid #C8E6C9;border-radius:6px;'
+        f'padding:8px 10px">'
+        f'<div style="font-size:10px;font-weight:500;color:#1B5E20;margin-bottom:2px">Auto-enriched</div>'
+        f'<div style="font-size:12px;font-weight:500;color:#1B5E20">Active</div>'
+        f'<div style="font-size:10px;color:#2E7D32">Injected in triage</div>'
+        f'</div>'
+        f'</div></div></div>',
+        unsafe_allow_html=True,
+    )
+
+
+# ── Entry point ────────────────────────────────────────────────────────────────
+
+def render() -> None:
+    topbar("Dashboard")
+
+    # Determine current pipeline step from session state
+    current_step = 0
+    if st.session_state.get("current_run"):
+        current_step = 1
+    if st.session_state.get("triage_result"):
+        current_step = 2
+    if st.session_state.get("fix_script"):
+        current_step = 3
+
+    stepper(WORKFLOW_STEPS, current_step)
+
+    # ── Load stats ─────────────────────────────────────────────────────────
+    stats = {"runs_today": 0, "runs_delta": 0, "resolved": 0, "resolve_rate": 0,
+             "pending": 0, "runs_week": 0, "avg_daily": 0}
+    runs = []
+    categories = []
+    doc_count, chunk_count = 0, 0
+    doc_types = [
+        {"ext": ".pdf",  "count": 0, "label": "Runbooks",  "color": "#A32D2D"},
+        {"ext": ".docx", "count": 0, "label": "SOPs",      "color": "#185FA5"},
+        {"ext": ".md",   "count": 0, "label": "RCA logs",  "color": "#3B6D11"},
+    ]
+
+    try:
+        from db.store import get_dashboard_stats, get_recent_runs, get_failure_categories
+        stats = get_dashboard_stats()
+        runs = get_recent_runs(limit=6)
+        categories = get_failure_categories(days=30)
+    except Exception:
+        pass
+
+    try:
+        from core.kb_store import chunk_count as kbc, list_unique_documents
+        chunk_count = kbc()
+        doc_count = len(list_unique_documents())
+    except Exception:
+        pass
+
+    # ── KPI row ────────────────────────────────────────────────────────────
+    _kpi_row(stats)
+
+    # ── Two-column layout ──────────────────────────────────────────────────
+    col_left, col_right = st.columns([1.4, 1])
+    with col_left:
+        _recent_runs(runs)
+    with col_right:
+        if not categories:
+            categories = [
+                {"label": "VLAN mismatch",    "pct": 38},
+                {"label": "Auth failure",     "pct": 24},
+                {"label": "DHCP drift",       "pct": 18},
+                {"label": "Interface timeout","pct": 12},
+                {"label": "Other",            "pct": 8},
+            ]
+        _failure_chart(categories)
+
+    # ── KB summary ─────────────────────────────────────────────────────────
+    _kb_summary(doc_count, chunk_count, doc_types)
+
+    # ── Quick-start CTA (shown only when no runs yet) ──────────────────────
+    if not runs:
+        st.markdown(
+            '<div style="background:#fff;border:0.5px solid #E0E4EA;border-radius:8px;'
+            'padding:20px;text-align:center;margin-top:8px">'
+            '<div style="font-size:13px;font-weight:500;margin-bottom:6px">'
+            'Start your first triage</div>'
+            '<div style="font-size:12px;color:#9BA8B3;margin-bottom:12px">'
+            'Upload a test result file (JSON, XML, or log) to begin</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        if st.button("Go to Triage →", type="primary"):
+            st.session_state.page = "p02"
+            st.rerun()

@@ -18,7 +18,7 @@ import re
 import time
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import NamedTuple
 
 from .logger import audit
@@ -40,7 +40,7 @@ class StepResult:
     exit_code:         int = 0
     pre_check_output:  str = ""
     post_check_output: str = ""
-    executed_at:       datetime = field(default_factory=datetime.utcnow)
+    executed_at:       datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict:
         return {

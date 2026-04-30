@@ -32,7 +32,7 @@ class TriageConfig(BaseModel):
 
 
 class UIConfig(BaseModel):
-    title: str = "NBN Test Failure Triage — AI Assistant"
+    title: str = "Test Failure Triage — AI Assistant"
     show_raw_llm_response: bool = True
 
 

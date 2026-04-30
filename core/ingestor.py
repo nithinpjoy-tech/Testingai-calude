@@ -19,7 +19,7 @@ import json
 import re
 import uuid
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import DeviceUnderTest, TestMetric, TestRun, Verdict
@@ -71,7 +71,7 @@ def _from_raw_log(path: Path) -> TestRun:
       ...
       # End of log — test verdict: FAIL|PASS
 
-    Also supports the NBN sample log format used in pppoe_vlan_mismatch.log.
+    Also supports the  sample log format used in pppoe_vlan_mismatch.log.
     """
     text  = path.read_text()
     lines = text.splitlines()
@@ -81,7 +81,7 @@ def _from_raw_log(path: Path) -> TestRun:
     vendor    = "unknown"
     model_    = "unknown"
     firmware  = "unknown"
-    timestamp = datetime.utcnow()
+    timestamp = datetime.now(timezone.utc)
     verdict   = Verdict.INCONCLUSIVE
     failure_summary = None
 
@@ -247,7 +247,7 @@ def _map(data: dict, fmt: str, raw_path: str) -> TestRun:
         test_case_id      = data.get("test_id", "unknown"),
         test_case_name    = data.get("test_name", "unknown"),
         timestamp         = datetime.fromisoformat(
-                                data.get("run_timestamp", datetime.utcnow().isoformat())
+                                data.get("run_timestamp", datetime.now(timezone.utc).isoformat())
                                 .replace("Z", "+00:00")
                             ),
         verdict           = Verdict(data.get("verdict", "FAIL")),

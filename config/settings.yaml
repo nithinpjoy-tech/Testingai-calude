@@ -1,5 +1,5 @@
 app:
-  name: "NBN Test Triage Tool"
+  name: "Test Triage Tool"
   version: "0.1.0-milestone1"
   env: "demo"
 
@@ -29,7 +29,7 @@ notifications:
 ui:
   host: "0.0.0.0"
   port: 8501
-  page_title: "NBN Test Triage"
+  page_title: "Test Triage"
   theme: "professional"
 
 logging:

@@ -5,7 +5,7 @@ Features: #8 script view, #9 approval gate, #10 step executor, #11 rollback indi
 """
 from __future__ import annotations
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 import streamlit as st
 
@@ -186,7 +186,7 @@ def _render_main(run, triage) -> None:
             disabled=not operator,
         ):
             script.approved_by = operator
-            script.approved_at = datetime.utcnow()
+            script.approved_at = datetime.now(timezone.utc)
             st.session_state.approved = True
             st.rerun()
 

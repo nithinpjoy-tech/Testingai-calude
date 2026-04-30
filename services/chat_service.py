@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 import os
 from collections.abc import Generator
-from datetime import datetime
+from datetime import datetime, timezone
 from textwrap import dedent
 
 import anthropic
@@ -105,7 +105,7 @@ def build_system_prompt(
     request. Rebuilt fresh on each call so Claude always has the latest
     step outputs even as execution progresses.
     """
-    now = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     device_block = dedent(f"""\
         Vendor     : {run.dut.vendor}
@@ -144,7 +144,7 @@ def build_system_prompt(
         )
 
     return dedent(f"""\
-        You are an expert NBN network engineer assistant embedded inside a
+        You are an expert  network engineer assistant embedded inside a
         live triage session. The operator can ask you questions at any time
         during the diagnostic and fix execution.
 

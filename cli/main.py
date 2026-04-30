@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import click
@@ -42,7 +42,7 @@ SEV_COLOUR = {
 @click.group()
 @click.version_option("0.1.0-milestone1")
 def cli():
-    """NBN Test Triage Tool — AI-powered test failure analysis."""
+    """Test Triage Tool — AI-powered test failure analysis."""
 
 
 # ── analyse ───────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ def analyse(file: str, mode: str, approve: bool, no_exec: bool,
     store.init_db()
 
     # ── Step 1: Ingest ────────────────────────────────────────────────────────
-    console.rule("[bold]NBN Test Triage Tool[/bold]")
+    console.rule("[bold]Test Triage Tool[/bold]")
     with Progress(SpinnerColumn(), TextColumn("{task.description}"),
                   console=console, transient=True) as prog:
         prog.add_task("Ingesting test result...", total=None)
@@ -115,7 +115,7 @@ def analyse(file: str, mode: str, approve: bool, no_exec: bool,
             return
 
     script.approved_by = operator
-    script.approved_at = datetime.utcnow()
+    script.approved_at = datetime.now(timezone.utc)
     console.print(f"\n[green]✅ Approved by:[/green] {operator}")
 
     # ── Step 5: Execute ───────────────────────────────────────────────────────
@@ -159,8 +159,8 @@ def analyse(file: str, mode: str, approve: bool, no_exec: bool,
     exec_result = ExecutionResult(
         run_id=run.run_id,
         fix_script_title=script.title,
-        started_at=datetime.utcnow(),
-        completed_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
+        completed_at=datetime.now(timezone.utc),
         overall_status=results[-1].status if results else StepStatus.PENDING,
         steps=script.steps,
         execution_mode=script.execution_mode,
@@ -215,7 +215,7 @@ def history(limit: int, verdict: str | None):
 
     for r in runs:
         ts  = r.created_at.strftime("%m-%d %H:%M") if r.created_at else "—"
-        rid = r.id[:8] + "…"
+        rid = str(r.id)[:8] + "…"
         vrd_style = "red" if r.verdict.value == "FAIL" else "green"
         sev = r.severity.value if r.severity else "—"
         sev_style = SEV_COLOUR.get(sev, "dim")

@@ -1,7 +1,7 @@
 """
 core/kb_ingest.py — Text extraction and chunking for the Knowledge Base.
 
-Drop-in addition to the NBN Test Triage Tool.
+Drop-in addition to theTest Triage Tool.
 Supports: PDF, DOCX, TXT, MD, LOG, CSV, JSON
 """
 from __future__ import annotations

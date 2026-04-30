@@ -11,7 +11,7 @@ Two storage modes (auto-detected):
 Configure via environment variables:
   CHROMADB_HOST   — if set, uses HttpClient at this host (Docker mode)
   CHROMADB_PORT   — port for HttpClient (default 8000)
-  KB_COLLECTION   — collection name (default "nbn_knowledge")
+  KB_COLLECTION   — collection name (default "_knowledge")
 """
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ _ef         = None   # chromadb DefaultEmbeddingFunction
 _client     = None
 _collection = None
 
-COLLECTION_NAME = os.getenv("KB_COLLECTION",    "nbn_knowledge")
+COLLECTION_NAME = os.getenv("KB_COLLECTION",    "_knowledge")
 CHROMA_HOST     = os.getenv("CHROMADB_HOST",    "")      # empty → PersistentClient
 CHROMA_PORT     = int(os.getenv("CHROMADB_PORT", "8000"))
 

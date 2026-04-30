@@ -1,6 +1,6 @@
 """Executor backends.
 
-The simulated backend models an NBN NTD CLI. It is deterministic so the
+The simulated backend models an  NTD CLI. It is deterministic so the
 demo is reliable. Switching to a real device for production means setting
 EXECUTOR_BACKEND=ssh and implementing the SSHExecutor (stub provided).
 """
@@ -60,7 +60,7 @@ class SimulatedNTDState:
     pppoe_session_id: str = "-"
     dhcp_state: str = "no-lease"
     dhcp_ip: str = "-"
-    expected_service_vlan: int = 2           # the OLT expects VLAN 2 for nbn 100/40
+    expected_service_vlan: int = 2           # the OLT expects VLAN 2 for  100/40
     saved: bool = False
 
 

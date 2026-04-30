@@ -4,8 +4,9 @@ Schema approved in milestone planning. Do not change without versioning.
 """
 from __future__ import annotations
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
+from uuid import UUID, uuid4
 from pydantic import BaseModel, Field
 
 
@@ -95,7 +96,7 @@ class TriageResult(BaseModel):
     claude_model: str
     prompt_tokens: int = 0
     completion_tokens: int = 0
-    triage_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    triage_timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ── Remediation / Fix Script ──────────────────────────────────────────────────
@@ -142,7 +143,7 @@ class ExecutionResult(BaseModel):
 
 class RunReport(BaseModel):
     run_id: str
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     test_run: TestRun
     triage: TriageResult
     fix_script: FixScript | None = None
@@ -163,8 +164,8 @@ class RunStatus(str, Enum):
 
 class RunRecord(BaseModel):
     """Lightweight row stored in SQLite — not the full RunReport graph."""
-    id:          str
-    created_at:  datetime = Field(default_factory=datetime.utcnow)
+    id:          UUID = Field(default_factory=uuid4)
+    created_at:  datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     source_file: str | None = None
     test_case:   str
     verdict:     Verdict
@@ -185,7 +186,7 @@ class ChatMessage(BaseModel):
     """A single turn in the mid-triage chat sidebar."""
     role:      ChatRole
     content:   str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class ChatSession(BaseModel):
@@ -194,7 +195,7 @@ class ChatSession(BaseModel):
     messages: list[ChatMessage] = []
 
     def add(self, role: ChatRole, content: str) -> "ChatMessage":
-        msg = ChatMessage(role=role, content=content)
+        msg = ChatMessage(role=role, content=content, timestamp=datetime.now(timezone.utc))
         self.messages.append(msg)
         return msg
 

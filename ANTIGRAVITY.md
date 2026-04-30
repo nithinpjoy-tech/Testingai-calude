@@ -5,7 +5,7 @@ Download from: https://antigravity.google/download
 Sign in with your personal Gmail account.
 
 ## 2. Open the project
-File → Open Folder → select the `nbn-test-tool` folder.
+File → Open Folder → select the `-test-tool` folder.
 Antigravity will auto-detect `AGENTS.md` and `GEMINI.md` and load them as workspace rules.
 
 ## 3. Set your API key

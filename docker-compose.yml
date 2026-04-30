@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NBN Test Triage Tool — Docker Compose
+# Test Triage Tool — Docker Compose
 # Usage:
 #   cp .env.example .env          # add ANTHROPIC_API_KEY
 #   docker compose up             # start (builds automatically)
@@ -10,7 +10,7 @@
 services:
   chromadb:
     image: chromadb/chroma:1.0.0
-    container_name: nbn-chromadb
+    container_name: -chromadb
     restart: unless-stopped
     ports:
       - "8001:8000"          # exposed on host as 8001 to avoid conflicts
@@ -31,8 +31,8 @@ services:
       context: .
       dockerfile: Dockerfile
       target: runtime
-    image: nbn-triage-tool:milestone1
-    container_name: nbn-triage
+    image: -triage-tool:milestone1
+    container_name: -triage
     restart: unless-stopped
 
     ports:
@@ -62,7 +62,7 @@ services:
       # Knowledge Base — points to the chromadb service
       CHROMADB_HOST: "chromadb"
       CHROMADB_PORT: "8000"
-      KB_COLLECTION: "nbn_knowledge"
+      KB_COLLECTION: "_knowledge"
       KB_EMBEDDING_MODEL: "all-MiniLM-L6-v2"
 
     healthcheck:
@@ -96,8 +96,8 @@ volumes:
   triage-db:
     driver: local
     labels:
-      com.nbn.triage.description: "SQLite run history + saved reports"
+      com..triage.description: "SQLite run history + saved reports"
   chroma_data:
     driver: local
     labels:
-      com.nbn.triage.description: "ChromaDB vector store for Knowledge Base"
+      com..triage.description: "ChromaDB vector store for Knowledge Base"

@@ -1,7 +1,7 @@
 """Structured JSON logger + append-only audit trail."""
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 def get_logger(name: str) -> logging.Logger:
@@ -18,6 +18,6 @@ def get_logger(name: str) -> logging.Logger:
 def audit(event: str, payload: dict, audit_path: str = "data/audit.jsonl") -> None:
     """Append one audit record — every LLM call and every executed command."""
     Path(audit_path).parent.mkdir(parents=True, exist_ok=True)
-    record = {"ts": datetime.utcnow().isoformat(), "event": event, **payload}
+    record = {"ts": datetime.now(timezone.utc).isoformat(), "event": event, **payload}
     with open(audit_path, "a") as f:
         f.write(json.dumps(record) + "\n")

@@ -9,7 +9,7 @@ TODO (Step 6): implement to_pdf() for formal reports
 from __future__ import annotations
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .models import ExecutionResult, FixScript, RunRecord, RunReport, RunStatus, TestRun, TriageResult
@@ -27,7 +27,7 @@ def build_report(
     """Assemble and return a RunReport. Does not persist — call save() separately."""
     return RunReport(
         run_id              = run.run_id,
-        generated_at        = datetime.utcnow(),
+        generated_at        = datetime.now(timezone.utc),
         test_run            = run,
         triage              = triage,
         fix_script          = script,

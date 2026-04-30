@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NBN Test Triage Tool — Dockerfile
+# Test Triage Tool — Dockerfile
 # Multi-stage: builder installs deps, runtime is lean
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime
 
-LABEL maintainer="NBN Engineering" \
+LABEL maintainer=" Engineering" \
       version="0.1.0-milestone1" \
       description="AI-powered test failure triage tool"
 

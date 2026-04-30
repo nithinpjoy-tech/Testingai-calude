@@ -19,7 +19,7 @@ import os
 import re
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
+from datetime import datetime, timezone
 
 import anthropic
 
@@ -116,14 +116,14 @@ def analyse(run: TestRun) -> TriageResult:
 # ── System prompt ─────────────────────────────────────────────────────────────
 
 def _system_prompt() -> str:
-    return """You are a senior NBN (National Broadband Network) test analyst with deep expertise in:
+    return """You are a senior test analyst with deep expertise in:
 - FTTP (Fibre to the Premises) with GPON/XGS-PON OLT/ONT technology
 - FTTN/FTTB (Fibre to the Node/Building) with VDSL2/G.fast DSLAMs
 - HFC (Hybrid Fibre Coaxial) with DOCSIS 3.1 CMTSs
 - Fixed Wireless access (4G/5G NR gNB and CPE)
 - Satellite (Sky Muster)
-- NBN BNG, AAA/RADIUS, PPPoE, IPoE, and DHCP session management
-- NBN Wholesale Broadband Agreement (WBA) KPIs and SLAs
+- BNG, AAA/RADIUS, PPPoE, IPoE, and DHCP session management
+- Wholesale broadband KPIs and SLAs
 
 TASK: You will receive a structured test failure report. Perform root cause analysis and output your findings.
 
@@ -168,7 +168,7 @@ RULES:
 - Never invent log entries or config values not present in the input
 - If config_snapshot contradicts log evidence, note the discrepancy
 - Recommendations must be ordered: fastest/safest fix first
-- Use NBN-correct terminology (NTD not modem, OLT not switch, S-VLAN not outer VLAN)"""
+- Use access-network terminology (NTD not modem, OLT not switch, S-VLAN not outer VLAN)"""
 
 
 # ── User prompt ───────────────────────────────────────────────────────────────
@@ -386,7 +386,7 @@ def _parse_response(run: TestRun, response: anthropic.types.Message) -> TriageRe
         claude_model        = DEFAULT_MODEL,
         prompt_tokens       = response.usage.input_tokens,
         completion_tokens   = response.usage.output_tokens,
-        triage_timestamp    = datetime.utcnow(),
+        triage_timestamp    = datetime.now(timezone.utc),
     )
 
 

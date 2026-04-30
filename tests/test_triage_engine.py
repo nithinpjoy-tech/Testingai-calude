@@ -29,7 +29,7 @@ def pppoe_run() -> TestRun:
     return TestRun(
         run_id         = "run-test-001",
         test_case_id   = "TC_PPPOE_FTTP_001",
-        test_case_name = "PPPoE session establishment on FTTP NTD (nbn 100/40)",
+        test_case_name = "PPPoE session establishment on FTTP NTD ( 100/40)",
         timestamp      = datetime(2026, 4, 28, 3, 14, 21),
         verdict        = Verdict.FAIL,
         dut            = DeviceUnderTest(
@@ -51,7 +51,7 @@ def pppoe_run() -> TestRun:
         extra_context={
             "config_snapshot": {
                 "ntd": {"interface_wan0_vlan": 10, "pppoe_client": "enabled"},
-                "olt_port": {"service_vlan": 2, "service_profile": "NBN-RES-100-40"},
+                "olt_port": {"service_vlan": 2, "service_profile": "RES-100-40"},
             },
             "failure_summary": "PADI sent but no PADO received. OLT drops frames with VLAN 10.",
             "speed_tier": "100/40",
@@ -75,7 +75,7 @@ def _make_mock_response(xml_body: str) -> MagicMock:
 
 # ── System prompt tests ───────────────────────────────────────────────────────
 
-def test_system_prompt_contains_nbn_tech():
+def test_system_prompt_contains__tech():
     sp = _system_prompt()
     for tech in ["FTTP", "FTTN", "HFC", "Fixed Wireless", "PPPoE"]:
         assert tech in sp, f"System prompt missing '{tech}'"
@@ -138,10 +138,10 @@ GOOD_RESPONSE = textwrap.dedent("""\
       <severity>CRITICAL</severity>
       <confidence>0.97</confidence>
       <root_cause>
-        <summary>NTD wan0 is tagged with VLAN 10 but the OLT service profile NBN-RES-100-40 expects service-VLAN 2, causing all PPPoE discovery frames to be silently dropped.</summary>
+        <summary>NTD wan0 is tagged with VLAN 10 but the OLT service profile RES-100-40 expects service-VLAN 2, causing all PPPoE discovery frames to be silently dropped.</summary>
         <detail>
           At 03:14:21Z the NTD sent PADI frames tagged VLAN 10 on wan0. The OLT port g-1/0/3
-          is provisioned with service-profile NBN-RES-100-40 which maps to S-VLAN 2. The
+          is provisioned with service-profile RES-100-40 which maps to S-VLAN 2. The
           S-VLAN translation table has no entry for VLAN 10, so every frame is dropped and
           the sv-vlan-mismatch counter incremented to 42 within 90 seconds. The NTD retried
           3 times over 90 seconds without receiving a PADO, then declared discovery timeout.
@@ -151,7 +151,7 @@ GOOD_RESPONSE = textwrap.dedent("""\
       <recommendations>
         <recommendation priority="1">
           <action>Change NTD wan0 VLAN from 10 to 2: set interface wan0 vlan-id 2; commit</action>
-          <rationale>Aligns the NTD C-VLAN with the OLT S-VLAN translation rule for NBN-RES-100-40. PPPoE PADI will be forwarded and PADO returned.</rationale>
+          <rationale>Aligns the NTD C-VLAN with the OLT S-VLAN translation rule for RES-100-40. PPPoE PADI will be forwarded and PADO returned.</rationale>
           <effort>2 min — single CLI config change, no maintenance window required</effort>
         </recommendation>
         <recommendation priority="2">

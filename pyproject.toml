@@ -1,7 +1,7 @@
 [project]
-name = "nbn-test-triage-tool"
+name = "test-triage-tool"
 version = "0.1.0-milestone1"
-description = "AI-powered test failure triage and remediation for NBN access networks"
+description = "AI-powered test failure triage and remediation for access networks"
 requires-python = ">=3.11"
 dependencies = [
     "anthropic>=0.97.0",
@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-nbn-triage = "cli.main:cli"
+triage = "cli.main:cli"
 
 [tool.ruff]
 line-length = 100

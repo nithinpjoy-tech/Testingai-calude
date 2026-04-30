@@ -34,7 +34,7 @@ from .models import (
 
 
 # ---------------------------------------------------------------------------
-# Helpers — convert a generic dict (from JSON/YAML/XML→dict) to TestRun
+# Helpers — convert a generic dict (from JSON/YAML/XML?dict) to TestRun
 # ---------------------------------------------------------------------------
 
 
@@ -176,7 +176,7 @@ class XMLParser(BaseParser):
             d = d["test_run"]
         return dict_to_test_run(d, self.name)
 
-    # --- XML → dict conversion (handles repeated tags as lists) ---
+    # --- XML ? dict conversion (handles repeated tags as lists) ---
     def _element_to_dict(self, el: ET.Element) -> Any:
         # Leaf with text only.
         if len(el) == 0 and not el.attrib:

@@ -4,7 +4,7 @@
   "run_timestamp": "2026-04-29T02:14:33.000Z",
   "verdict": "FAIL",
   "build": "NTD-FW-4.1.2.187",
-  "environment": "NBN Lab — Rack 3, Bay 7",
+  "environment": " Lab — Rack 3, Bay 7",
   "dut": {
     "hostname": "NTD-LAB-FPX2127",
     "model": "Arris NTD FPX-2127",
@@ -12,7 +12,7 @@
     "ip": "192.168.1.1",
     "technology": "FTTP"
   },
-  "topology_notes": "NTD connected to Calix E7-2 OLT via single-mode fibre. VLAN 2 is the NBN-assigned CVID for 100/20 speed tier. NTD misconfigured with VLAN 10 (previous test artefact).",
+  "topology_notes": "NTD connected to Calix E7-2 OLT via single-mode fibre. VLAN 2 is the -assigned CVID for 100/20 speed tier. NTD misconfigured with VLAN 10 (previous test artefact).",
   "metrics": [
     { "name": "PPPoE Discovery (PADI sent)",    "expected": true,  "measured": true,  "status": "PASS" },
     { "name": "PPPoE Offer (PADO received)",     "expected": true,  "measured": false, "status": "FAIL" },

@@ -25,7 +25,7 @@ from core.remediation import (
 def pppoe_run() -> TestRun:
     return TestRun(
         run_id="run-rem-001", test_case_id="TC_PPPOE_FTTP_001",
-        test_case_name="PPPoE session establishment on FTTP NTD (nbn 100/40)",
+        test_case_name="PPPoE session establishment on FTTP NTD ( 100/40)",
         timestamp=datetime(2026, 4, 28, 3, 14, 21),
         verdict=Verdict.FAIL,
         dut=DeviceUnderTest(
@@ -37,7 +37,7 @@ def pppoe_run() -> TestRun:
         extra_context={
             "config_snapshot": {
                 "ntd": {"interface_wan0_vlan": 10, "pppoe_client": "enabled"},
-                "olt_port": {"service_vlan": 2, "service_profile": "NBN-RES-100-40"},
+                "olt_port": {"service_vlan": 2, "service_profile": "RES-100-40"},
             },
             "test_parameters": {"expected_service_vlan": 2},
             "speed_tier": "100/40",
@@ -80,7 +80,7 @@ GOOD_FIX_XML = textwrap.dedent("""\
           <rollback>echo no-rollback-needed</rollback>
         </step>
         <step number="2">
-          <description>Change wan0 VLAN from 10 to 2 (NBN service VLAN for 100/40)</description>
+          <description>Change wan0 VLAN from 10 to 2 ( service VLAN for 100/40)</description>
           <command>set interface wan0 vlan-id 2</command>
           <pre_check>show interface wan0 config</pre_check>
           <expected_output>vlan-id changed</expected_output>

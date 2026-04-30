@@ -94,7 +94,7 @@ def _send_slack(report: RunReport) -> None:
                     "type": "header",
                     "text": {
                         "type": "plain_text",
-                        "text": f"{emoji} NBN Test Triage — {t.severity.value}",
+                        "text": f"{emoji}Test Triage — {t.severity.value}",
                     }
                 },
                 {
@@ -165,7 +165,7 @@ def _send_teams(report: RunReport) -> None:
                         "type":   "TextBlock",
                         "size":   "Medium",
                         "weight": "Bolder",
-                        "text":   f"{emoji} NBN Triage Alert — {t.severity.value}",
+                        "text":   f"{emoji}  Triage Alert — {t.severity.value}",
                         "color":  "Attention" if t.severity.value in ("CRITICAL","HIGH") else "Default",
                     },
                     {

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <test_result>
   <test_id>TC_PPPOE_FTTP_001</test_id>
-  <test_name>PPPoE session establishment on FTTP NTD (nbn 100/40)</test_name>
+  <test_name>PPPoE session establishment on FTTP NTD ( 100/40)</test_name>
   <run_timestamp>2026-04-28T03:14:21Z</run_timestamp>
   <build_version>ntd-fw-3.7.2-r4</build_version>
   <access_technology>FTTP</access_technology>
@@ -23,7 +23,7 @@
       <mgmt_address>10.10.0.21</mgmt_address>
     </dut>
   </duts>
-  <topology>NTD wan0 -- OLT g-1/0/3 -- BNG (POI-Sydney) — service VLAN expected = 2 for nbn 100/40</topology>
+  <topology>NTD wan0 -- OLT g-1/0/3 -- BNG (POI-Sydney) — service VLAN expected = 2 for  100/40</topology>
   <test_parameters>
     <expected_service_vlan>2</expected_service_vlan>
     <pppoe_username>user-002871@aussiebb.net</pppoe_username>
@@ -38,7 +38,7 @@
       <auth_type>PAP</auth_type>
     </ntd>
     <olt_port>
-      <service_profile>NBN-RES-100-40</service_profile>
+      <service_profile>RES-100-40</service_profile>
       <service_vlan>2</service_vlan>
       <admin>up</admin>
     </olt_port>
@@ -78,7 +78,7 @@
       <timestamp>2026-04-28T03:15:52Z</timestamp>
       <severity>INFO</severity>
       <source>olt.access</source>
-      <message>Frame received from ONT 002871 with VLAN 10; expected service-vlan 2 per profile NBN-RES-100-40 — frame DROPPED at S-VLAN translation</message>
+      <message>Frame received from ONT 002871 with VLAN 10; expected service-vlan 2 per profile RES-100-40 — frame DROPPED at S-VLAN translation</message>
     </event>
     <event>
       <timestamp>2026-04-28T03:15:52Z</timestamp>
@@ -88,5 +88,5 @@
     </event>
   </log_events>
   <verdict>FAIL</verdict>
-  <failure_summary>PPPoE session never reached lcp-up state. PADI frames are sent but no PADO is received. OLT logs show frames arriving with VLAN 10 while service profile NBN-RES-100-40 expects VLAN 2.</failure_summary>
+  <failure_summary>PPPoE session never reached lcp-up state. PADI frames are sent but no PADO is received. OLT logs show frames arriving with VLAN 10 while service profile RES-100-40 expects VLAN 2.</failure_summary>
 </test_result>

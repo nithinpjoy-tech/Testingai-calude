@@ -1,4 +1,4 @@
-# NBN Test Tool — application configuration
+# Test Tool — application configuration
 # Environment variables override these values (see .env.example).
 
 llm:
@@ -20,7 +20,7 @@ triage:
   cite_evidence_required: true
 
 ui:
-  title: "NBN Test Failure Triage — AI Assistant"
+  title: "Test Failure Triage — AI Assistant"
   show_raw_llm_response: true     # demo mode: useful to show prompt engineering
 
 audit:

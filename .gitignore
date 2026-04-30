@@ -79,4 +79,7 @@ docker-compose.override.yml
 
 # Project specific
 data/triage.db
+data/chroma/
+data/audit.jsonl
 .streamlit/secrets.toml
+.tmp-redesign-*/

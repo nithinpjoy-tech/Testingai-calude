@@ -10,11 +10,11 @@ gatherUsageStats = false
 
 [theme]
 base = "light"
-primaryColor = "#E8612C"
-backgroundColor = "#F4F6F9"
+primaryColor     = "#E8612C"
+backgroundColor  = "#F5F7FA"
 secondaryBackgroundColor = "#FFFFFF"
-textColor = "#1C2B3A"
-font = "sans serif"
+textColor        = "#1C2B3A"
+font             = "sans serif"
 
 [runner]
 magicEnabled = false

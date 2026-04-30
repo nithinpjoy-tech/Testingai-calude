@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# NBN Test Triage Tool — Makefile
+# Test Triage Tool — Makefile
 # Shortcuts for common developer and operator tasks.
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -9,7 +9,7 @@
 # Default target
 help:
 	@echo ""
-	@echo "  NBN Test Triage Tool — available commands"
+	@echo " Test Triage Tool — available commands"
 	@echo ""
 	@echo "  Local development"
 	@echo "  ─────────────────────────────────────────"

@@ -1,192 +1,135 @@
 """
-ui/app.py — Streamlit entry point (Step 5: COMPLETE)
-Handles: page config, theme, session state init, sidebar, severity banner, routing.
+ui/app.py  —  Test Triage Console  —  Streamlit entry point.
+
+Run:
+    streamlit run ui/app.py
+
+Professional Streamlit redesign for the test triage workflow.
 """
-import sys
-import os
+
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from core import config
 import streamlit as st
 
+# ── Page config — MUST be first Streamlit call ────────────────────────────────
 st.set_page_config(
-    page_title="NBN Test Triage Tool",
-    page_icon="🔍",
+    page_title="Test Triage Console",
+    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Professional theme injection ──────────────────────────────────────────────
-st.markdown("""<style>
-/* Colour tokens */
-:root {
-  --c-primary:#1A3557; --c-accent:#E8612C;
-  --c-bg:#F4F6F9;      --c-surface:#FFFFFF;
-  --c-border:#DDE1E7;  --c-text:#1C2B3A;
-  --c-muted:#6B7885;
-  --c-crit:#C0392B;    --c-high:#E67E22;
-  --c-med:#2471A3;     --c-low:#1E8449;
-  --c-pass:#D5F5E3;    --c-fail:#FADBD8;
-}
-
-/* App background */
-.stApp { background: var(--c-bg) !important; }
-
-/* Sidebar */
-section[data-testid="stSidebar"] {
-  background: var(--c-primary) !important;
-}
-section[data-testid="stSidebar"] * { color: #ECF0F1 !important; }
-section[data-testid="stSidebar"] .stButton button {
-  background: transparent !important;
-  border: 1px solid rgba(255,255,255,0.2) !important;
-  color: #ECF0F1 !important;
-  text-align: left !important;
-  margin-bottom: 4px !important;
-}
-section[data-testid="stSidebar"] .stButton button:hover {
-  background: rgba(255,255,255,0.12) !important;
-  border-color: var(--c-accent) !important;
-}
-section[data-testid="stSidebar"] .stButton[data-active="true"] button {
-  background: var(--c-accent) !important;
-  border-color: var(--c-accent) !important;
-}
-
-/* Logo Button styling (First button in sidebar) */
-section[data-testid="stSidebar"] .stButton button[kind="tertiary"] {
-    background: transparent !important;
-    border: none !important;
-    padding: 0.5rem 0 1rem 0 !important;
-    text-align: left !important;
-    display: block !important;
-    width: 100% !important;
-    box-shadow: none !important;
-}
-section[data-testid="stSidebar"] .stButton button[kind="tertiary"]:hover {
-    background: transparent !important;
-    border: none !important;
-}
-section[data-testid="stSidebar"] .stButton button[kind="tertiary"] p {
-    font-size: 1.8rem;
-    font-weight: 900;
-    letter-spacing: -1px;
-    background: linear-gradient(90deg, #FFFFFF, #E8612C);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin: 0;
-}
-section[data-testid="stSidebar"] .stButton button[kind="tertiary"]::after {
-    content: "AI powered Network test intelligence platform.";
-    display: block;
-    font-size: 0.75rem;
-    opacity: 0.8;
-    margin-top: 4px;
-    line-height: 1.3;
-    font-weight: 500;
-    color: #FFFFFF;
-    -webkit-text-fill-color: initial;
-    text-transform: none;
-    text-align: left;
-}
-
-/* Cards */
-.tt-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 1rem;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
-}
-.tt-card-accent { border-left: 4px solid var(--c-accent); }
-
-/* Metric-style KPI cards */
-.kpi-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  text-align: center;
-}
-.kpi-value { font-size: 2rem; font-weight: 700; color: var(--c-primary); }
-.kpi-label { font-size: 0.85rem; color: var(--c-muted); margin-top: 2px; }
-
-/* Badges */
-.badge {
-  display: inline-block;
-  padding: 3px 12px;
-  border-radius: 12px;
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-}
-.badge-pass    { background:#D5F5E3; color:#1E8449; }
-.badge-fail    { background:#FADBD8; color:#922B21; }
-.badge-crit    { background:#FADBD8; color:#922B21; }
-.badge-high    { background:#FDEBD0; color:#784212; }
-.badge-med     { background:#D6EAF8; color:#1A5276; }
-.badge-low     { background:#D5F5E3; color:#1E8449; }
-.badge-pending { background:#EBF5FB; color:#5D6D7E; }
-
-/* Step rows */
-.step-row {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: 8px;
-  padding: 0.9rem 1.2rem;
-  margin-bottom: 0.6rem;
-}
-.step-running { border-left: 4px solid var(--c-accent); }
-.step-passed  { border-left: 4px solid var(--c-low); }
-.step-failed  { border-left: 4px solid var(--c-crit); }
-
-/* Code blocks */
-.stCode { font-size: 0.82rem !important; }
-
-/* Divider spacing */
-hr { margin: 1.2rem 0 !important; }
-
-/* Hide streamlit branding */
-#MainMenu { visibility: hidden; }
-footer    { visibility: hidden; }
-
-/* Hide default pages navigation since we use a custom one */
-[data-testid="stSidebarNav"] { display: none !important; }
-</style>""", unsafe_allow_html=True)
-
-# ── Session state defaults ────────────────────────────────────────────────────
-_DEFAULTS = {
-    "current_run":    None,   # TestRun
-    "triage_result":  None,   # TriageResult
-    "fix_script":     None,   # FixScript
-    "exec_log":       [],     # list[StepResult.to_dict()]
-    "exec_done":      False,
-    "approved":       False,
-    "active_page":    "dashboard",
-    "kb_docs":        [],     # list[dict] — uploaded doc metadata for Library tab
-    "kb_chat":        [],     # list[dict] — KB query chat history
-}
-for k, v in _DEFAULTS.items():
-    if k not in st.session_state:
-        st.session_state[k] = v
-
-# ── Sidebar + severity banner ─────────────────────────────────────────────────
+from ui.theme import inject_theme
 from ui.components.sidebar import render_sidebar
-from ui.components.severity_banner import render_banner
-render_sidebar()
-render_banner()
 
-# ── Page routing ──────────────────────────────────────────────────────────────
-import importlib
-_PAGES = {
-    "dashboard":      "ui.pages.p01_dashboard",
-    "triage":         "ui.pages.p02_triage",
-    "remediation":    "ui.pages.p03_remediation",
-    "comparison":     "ui.pages.p04_comparison",
-    "replay":         "ui.pages.p05_replay",
-    "knowledge_base": "ui.pages.p06_knowledge",
+# ── Inject design system ───────────────────────────────────────────────────────
+inject_theme()
+
+# ── Session state defaults ─────────────────────────────────────────────────────
+_DEFAULTS = {
+    "page":             "p01",
+    "current_run":      None,
+    "triage_result":    None,
+    "fix_script":       None,
+    "exec_results":     [],
+    "raw_input_text":   "",
+    "raw_input_format": "json",
+    "_loaded_filename": None,   # tracks which file is loaded in triage uploader
 }
-mod = importlib.import_module(_PAGES.get(st.session_state.active_page, "ui.pages.p01_dashboard"))
-mod.render()
+for _k, _v in _DEFAULTS.items():
+    if _k not in st.session_state:
+        st.session_state[_k] = _v
+
+def _query_flag(name: str) -> bool:
+    value = st.query_params.get(name)
+    return value == "1" or value == ["1"]
+
+
+if _query_flag("clear_session"):
+    try:
+        from db.store import clear_run_history
+        clear_run_history()
+    except Exception:
+        pass
+
+    for key in (
+        "current_run",
+        "triage_result",
+        "fix_script",
+        "exec_results",
+        "raw_input_text",
+        "raw_input_format",
+    ):
+        st.session_state.pop(key, None)
+
+    st.session_state.page = "p01"
+    st.query_params.clear()
+    st.rerun()
+
+if _query_flag("new_triage"):
+    for key in (
+        "current_run",
+        "triage_result",
+        "fix_script",
+        "exec_results",
+        "raw_input_text",
+        "raw_input_format",
+    ):
+        st.session_state.pop(key, None)
+    st.session_state.page = "p02"
+    st.query_params.clear()
+    st.rerun()
+
+# ── Sidebar ────────────────────────────────────────────────────────────────────
+# Count pending runs that need approval
+pending = 0
+try:
+    from db.store import count_pending
+    pending = count_pending()
+except Exception:
+    pass
+
+api_ok = True
+try:
+    from core.config import get_config
+    cfg = get_config()
+    api_ok = bool(cfg.get("claude", {}).get("api_key"))
+except Exception:
+    api_ok = False
+
+render_sidebar(pending_count=pending, api_ok=api_ok)
+
+# ── Page router ────────────────────────────────────────────────────────────────
+import importlib, sys as _sys
+
+def _load(module_name: str):
+    """Force fresh load from disk on every run — avoids Streamlit hot-reload misses."""
+    _sys.modules.pop(module_name, None)
+    return importlib.import_module(module_name)
+
+page = st.session_state.get("page", "p01")
+
+if page == "p01":
+    _p = _load("ui.pages.p01_dashboard")
+    _p.render()
+elif page == "p02":
+    _p = _load("ui.pages.p02_triage")
+    _p.render()
+elif page == "p03":
+    _p = _load("ui.pages.p03_fix_script")
+    _p.render()
+elif page == "p04":
+    _p = _load("ui.pages.p04_execute")
+    _p.render()
+elif page == "p05":
+    _p = _load("ui.pages.p05_results")
+    _p.render()
+elif page == "p06":
+    _p = _load("ui.pages.p06_knowledge")
+    _p.render()
+elif page == "history":
+    _p = _load("ui.pages.p07_history")
+    _p.render()
+else:
+    st.error(f"Unknown page: {page}")

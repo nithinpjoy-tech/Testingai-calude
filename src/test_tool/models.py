@@ -1,4 +1,4 @@
-"""Canonical data models for the NBN Test Tool.
+"""Canonical data models for theTest Tool.
 
 Every parser converts a raw input file into a `TestRun`. The triage engine
 returns a `TriageResult`. The executor returns an `ExecutionReport`.

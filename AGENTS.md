@@ -1,10 +1,10 @@
-# AGENTS.md — NBN Test Triage Tool
+# AGENTS.md — Test Triage Tool
 # Read by Antigravity, Cursor, Claude Code, and all compatible AI agents.
 # Last updated: Milestone 1 complete.
 
 ## Project purpose
-AI-powered test failure triage and remediation tool for NBN (National Broadband Network)
-access network testing. Ingests test result files (JSON/XML), calls Claude to identify
+AI-powered test failure triage and remediation tool for access network testing.
+Ingests test result files (JSON/XML), calls Claude to identify
 root cause, generates an ordered fix script, executes it step-by-step against a device
 (simulated or live), and saves a structured RunReport.
 
@@ -153,7 +153,7 @@ APP_ENV             — demo | staging | production
 
 ## Demo scenario — PPPoE VLAN mismatch on FTTP
 - NTD (NetComm NF18ACV, FW 3.7.2-r4) configured with VLAN 10 on wan0
-- OLT (Nokia 7360) service profile NBN-RES-100-40 expects VLAN 2
+- OLT (Nokia 7360) service profile RES-100-40 expects VLAN 2
 - All PPPoE PADI frames silently dropped at S-VLAN translation
 - Fix: `set interface wan0 vlan-id 2 ; commit`
 - Post-fix: PPPoE reaches lcp-up, DHCP bound, IP assigned

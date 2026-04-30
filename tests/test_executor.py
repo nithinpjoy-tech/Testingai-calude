@@ -5,7 +5,7 @@ Tests for the simulated executor and mock NTD state machine.
 No real device connections — all simulated.
 """
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 
 import pytest
 
@@ -21,11 +21,11 @@ from core.models import (
 
 def _approved_script(steps: list[FixStep], mode=ExecutionMode.SIMULATED) -> FixScript:
     return FixScript(
-        run_id="run-exec-001",
+        run_id="00000000-0000-0000-0000-000000000003",
         title="Test Fix",
         steps=steps,
         approved_by="test-operator",
-        approved_at=datetime.utcnow(),
+        approved_at=datetime.now(timezone.utc),
         execution_mode=mode,
     )
 

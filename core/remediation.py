@@ -94,7 +94,7 @@ def _system_prompt(run: TestRun) -> str:
     model  = run.dut.model
     fw     = run.dut.firmware
 
-    return f"""You are a senior NBN field engineer specialised in remediating faults on NBN access equipment.
+    return f"""You are a senior field engineer specialised in remediating faults on access equipment.
 
 TARGET DEVICE: {vendor} {model}  Firmware: {fw}  Technology: {tech}
 
@@ -136,7 +136,7 @@ RULES:
 3. ORDERED — steps must be in the correct dependency order (read → verify → change → verify).
 4. ROLLBACK — every step that changes state MUST have a rollback command.
 5. SPECIFIC — use exact config field names and values from the triage. No placeholders.
-6. NBN-CORRECT — use vendor CLI syntax for {vendor} {model} firmware {fw}.
+6. DOMAIN-CORRECT — use vendor CLI syntax for {vendor} {model} firmware {fw}.
 7. SAFE-FIRST — read/show commands before write/set commands. Never change what you haven't read.
 8. ONE ISSUE — scope is strictly the confirmed root cause. Do not fix unrelated issues.
 

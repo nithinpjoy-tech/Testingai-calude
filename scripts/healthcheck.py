@@ -9,6 +9,11 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 PASS = "✅"
 FAIL = "❌"
 WARN = "⚠️ "
@@ -26,7 +31,7 @@ def check(label: str, fn) -> None:
         errors += 1
 
 
-print("\n NBN Test Triage Tool — Health Check\n" + "─" * 42)
+print("\nTest Triage Tool — Health Check\n" + "─" * 42)
 
 # ── Python version ────────────────────────────────────────────────────────────
 check("Python >= 3.11",
