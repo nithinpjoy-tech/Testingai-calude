@@ -165,6 +165,8 @@ _DEFAULTS = {
     "exec_done":      False,
     "approved":       False,
     "active_page":    "dashboard",
+    "kb_docs":        [],     # list[dict] — uploaded doc metadata for Library tab
+    "kb_chat":        [],     # list[dict] — KB query chat history
 }
 for k, v in _DEFAULTS.items():
     if k not in st.session_state:
@@ -179,11 +181,12 @@ render_banner()
 # ── Page routing ──────────────────────────────────────────────────────────────
 import importlib
 _PAGES = {
-    "dashboard":   "ui.pages.p01_dashboard",
-    "triage":      "ui.pages.p02_triage",
-    "remediation": "ui.pages.p03_remediation",
-    "comparison":  "ui.pages.p04_comparison",
-    "replay":      "ui.pages.p05_replay",
+    "dashboard":      "ui.pages.p01_dashboard",
+    "triage":         "ui.pages.p02_triage",
+    "remediation":    "ui.pages.p03_remediation",
+    "comparison":     "ui.pages.p04_comparison",
+    "replay":         "ui.pages.p05_replay",
+    "knowledge_base": "ui.pages.p06_knowledge",
 }
 mod = importlib.import_module(_PAGES.get(st.session_state.active_page, "ui.pages.p01_dashboard"))
 mod.render()

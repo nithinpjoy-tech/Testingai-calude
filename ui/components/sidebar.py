@@ -3,11 +3,12 @@ import streamlit as st
 from core.models import Verdict
 
 PAGES = [
-    ("dashboard",   "📊", "Dashboard"),
-    ("triage",      "🧠", "Triage"),
-    ("remediation", "🔧", "Remediation"),
-    ("comparison",  "⚖️", "Compare Runs"),
-    ("replay",      "▶️", "Replay"),
+    ("dashboard",      "📊", "Dashboard"),
+    ("triage",         "🧠", "Triage"),
+    ("remediation",    "🔧", "Remediation"),
+    ("comparison",     "⚖️", "Compare Runs"),
+    ("replay",         "▶️", "Replay"),
+    ("knowledge_base", "📚", "Knowledge Base"),
 ]
 
 def render_sidebar() -> None:
@@ -63,10 +64,11 @@ def _readiness_dot(page_key: str) -> str:
     done   = st.session_state.get("exec_done")
 
     ready = {
-        "dashboard":   True,
-        "triage":      run is not None,
-        "remediation": triage is not None,
-        "comparison":  True,
-        "replay":      True,
+        "dashboard":      True,
+        "triage":         run is not None,
+        "remediation":    triage is not None,
+        "comparison":     True,
+        "replay":         True,
+        "knowledge_base": True,
     }
     return "🟢" if ready.get(page_key) else "⚪"

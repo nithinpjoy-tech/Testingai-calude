@@ -26,6 +26,13 @@ import anthropic
 from .logger import audit
 from .models import Recommendation, Severity, TestRun, TriageResult
 
+# KB context injection — silently disabled if dependencies not installed
+try:
+    from .kb_store import search as _kb_search, format_kb_context as _kb_format
+    _KB_AVAILABLE = True
+except Exception:
+    _KB_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
@@ -50,6 +57,24 @@ def analyse(run: TestRun) -> TriageResult:
     client = anthropic.Anthropic()                 # reads ANTHROPIC_API_KEY from env
     system = _system_prompt()
     user   = _build_prompt(run)
+
+    # ── KB context injection ──────────────────────────────────────────────────
+    if _KB_AVAILABLE:
+        try:
+            failure_summary = run.extra_context.get("failure_summary", "")
+            recent_errors   = " ".join(run.error_logs[:3]) if run.error_logs else ""
+            kb_query        = f"{run.test_case_name} {recent_errors} {failure_summary}".strip()
+            kb_chunks       = _kb_search(kb_query, top_k=5)
+            if kb_chunks:
+                system += (
+                    "\n\n════════════════════════════════════════════\n"
+                    "KNOWLEDGE BASE — RUNBOOKS & PAST INCIDENTS\n"
+                    "════════════════════════════════════════════\n"
+                    + _kb_format(kb_chunks)
+                )
+                logger.info("KB: injected %d chunks for run=%s", len(kb_chunks), run.run_id)
+        except Exception as _kb_err:
+            logger.warning("KB search skipped (non-fatal): %s", _kb_err)
 
     logger.info("Triage call → Claude %s  run=%s  prompt_v=%s",
                 DEFAULT_MODEL, run.run_id, PROMPT_VERSION)
